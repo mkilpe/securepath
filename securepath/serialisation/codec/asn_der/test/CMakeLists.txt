@@ -1,0 +1,1 @@
+securepath_add_test(test_asn_der serialisation test_frame)

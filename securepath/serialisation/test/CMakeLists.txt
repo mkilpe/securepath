@@ -1,0 +1,1 @@
+securepath_add_test(test_serialisation serialisation test_frame)

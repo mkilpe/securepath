@@ -1,0 +1,13 @@
+
+implement following types for serialisation:
+
+* null type
+* any type
+* object identifier
+* bit string
+* floating point
+
+implement basic x.509 serialisation?
+implement human readable codec (XER, JSON)?
+
+consider how to make compatibility test when changing serialised types

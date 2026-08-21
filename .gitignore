@@ -1,0 +1,19 @@
+# build trees (out-of-source only; see CMakePresets.json)
+build/
+build-*/
+build_*/
+compile_commands.json
+
+# stray in-source cmake leftovers
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+*_autogen/
+
+# editors and scratch
+*.swp
+*.log
+*.sublime-workspace
+.cache/

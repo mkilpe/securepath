@@ -1,0 +1,50 @@
+{
+    "version": 6,
+    "configurePresets": [
+        {
+            "name": "default",
+            "displayName": "Linux (build/)",
+            "binaryDir": "${sourceDir}/build"
+        },
+        {
+            "name": "windows",
+            "displayName": "Windows cross-compile (build-windows/)",
+            "binaryDir": "${sourceDir}/build-windows",
+            "toolchainFile": "${sourceDir}/cmake/toolchain-mingw64.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_CROSSCOMPILING_EMULATOR": "wine64"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "default",
+            "configurePreset": "default"
+        },
+        {
+            "name": "windows",
+            "configurePreset": "windows"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "default",
+            "configurePreset": "default",
+            "output": {
+                "outputOnFailure": true
+            }
+        },
+        {
+            "name": "windows",
+            "configurePreset": "windows",
+            "environment": {
+                "WINEPATH": "/usr/x86_64-w64-mingw32/sys-root/mingw/bin",
+                "WINEDEBUG": "-all"
+            },
+            "output": {
+                "outputOnFailure": true
+            }
+        }
+    ]
+}
