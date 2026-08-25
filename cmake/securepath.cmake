@@ -6,10 +6,10 @@
 #   securepath_add_test_directory(test)
 include_guard(GLOBAL)
 
-# Interface target carrying the include root and language level; every
+# Interface target (securepath::options) carrying the include root and language level; every
 # library links it PUBLIC so consumers can write #include <securepath/...>.
 add_library(securepath_common INTERFACE)
-add_library(securepath::common ALIAS securepath_common)
+add_library(securepath::options ALIAS securepath_common)
 target_include_directories(securepath_common INTERFACE
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>)
 target_compile_features(securepath_common INTERFACE cxx_std_26)

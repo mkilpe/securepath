@@ -1,0 +1,6 @@
+add_subdirectory(support)
+file(GLOB SRC CONFIGURE_DEPENDS *.cpp *.hpp tests/*.cpp tests/*.hpp tools/*.cpp tools/*.hpp)
+add_executable(test_crypto ${SRC})
+target_link_libraries(test_crypto PRIVATE crypto crypto_test_support test_frame securepath_common)
+securepath_apply_warnings(test_crypto)
+add_test(NAME test_crypto COMMAND test_crypto)

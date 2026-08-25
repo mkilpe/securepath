@@ -1,9 +1,42 @@
-# dependency order: log <- util <- serialisation; event_system standalone;
-# test_frame is a Catch2 support library used by every test suite
-add_subdirectory(log)
-add_subdirectory(util)
-add_subdirectory(event_system)
-add_subdirectory(serialisation)
+include(deps)
+securepath_find_asio()
+securepath_find_sqlite3()
+securepath_find_curses()
+securepath_find_botan()
+
+# Dependency order (each lib links only libs listed before it):
+#   log <- util <- serialisation <- event_system <- database <- common <- crypto
+#   <- network <- console <- infrastructure/*
+# The EXISTS guard lets libraries be ported one directory at a time.
+function(securepath_add_library_directory dir)
+    if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${dir}/CMakeLists.txt)
+        message(STATUS "securepath/${dir}: not ported yet, skipped")
+        return()
+    endif()
+    add_subdirectory(${dir})
+endfunction()
+
+securepath_add_library_directory(log)
+securepath_add_library_directory(util)
+securepath_add_library_directory(serialisation)
+securepath_add_library_directory(event_system)
+if(SECUREPATH_HAVE_SQLITE3)
+    securepath_add_library_directory(database)
+    securepath_add_library_directory(common)
+    if(SECUREPATH_HAVE_BOTAN)
+        securepath_add_library_directory(crypto)
+        securepath_add_library_directory(network)
+        securepath_add_library_directory(server_common)
+        securepath_add_library_directory(infrastructure)
+    else()
+        message(STATUS "securepath/{crypto,network,infrastructure}: skipped, Botan >= 3.9 not found")
+    endif()
+else()
+    message(STATUS "securepath/{database,common,crypto,network,infrastructure}: skipped, sqlite3 not found")
+endif()
+if(SECUREPATH_HAVE_CURSES)
+    securepath_add_library_directory(console)
+endif()
 if(SECUREPATH_BUILD_TESTS OR SECUREPATH_BUILD_TEST_FRAME)
     add_subdirectory(test_frame)
 endif()

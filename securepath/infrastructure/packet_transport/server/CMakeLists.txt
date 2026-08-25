@@ -1,0 +1,7 @@
+add_subdirectory(server_lib)
+
+add_executable(packet_server main.cpp)
+target_link_libraries(packet_server PRIVATE packet_server_lib securepath_common)
+securepath_apply_warnings(packet_server)
+
+securepath_add_test_directory(test)

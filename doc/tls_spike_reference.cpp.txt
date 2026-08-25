@@ -1,0 +1,111 @@
+#include <asio.hpp>
+#include <botan/auto_rng.h>
+#include <botan/credentials_manager.h>
+#include <botan/ec_group.h>
+#include <botan/ecdsa.h>
+#include <botan/hex.h>
+#include <botan/ml_dsa.h>
+#include <botan/pubkey.h>
+#include <botan/tls_callbacks.h>
+#include <botan/tls_client.h>
+#include <botan/tls_policy.h>
+#include <botan/tls_server.h>
+#include <botan/tls_session_manager_memory.h>
+#include <botan/tls_signature_scheme.h>
+#include <memory>
+#include <print>
+#include <vector>
+
+namespace tls = Botan::TLS;
+using bytes = std::vector<std::uint8_t>;
+
+struct pq_policy : tls::Policy {
+	std::vector<tls::Group_Params> key_exchange_groups() const override { return {tls::Group_Params::HYBRID_X25519_ML_KEM_768}; }
+	bool allow_tls12() const override { return false; }
+	bool allow_tls13() const override { return true; }
+	std::vector<tls::Certificate_Type> accepted_server_certificate_types() const override { return {tls::Certificate_Type::RawPublicKey}; }
+	std::vector<tls::Certificate_Type> accepted_client_certificate_types() const override { return {tls::Certificate_Type::RawPublicKey}; }
+	bool require_client_certificate_authentication() const override { return true; }
+};
+
+// TLS-level identity: an ephemeral ECDSA P-256 raw key (Botan TLS authenticates only with RSA/ECDSA); it only binds the
+// channel, the real (PQ) authentication is the ML-DSA signature over the exporter below.
+struct raw_creds : Botan::Credentials_Manager {
+	explicit raw_creds(Botan::RandomNumberGenerator& rng) : key(std::make_shared<Botan::ECDSA_PrivateKey>(rng, Botan::EC_Group::from_name("secp256r1"))) {}
+	std::shared_ptr<Botan::Public_Key> find_raw_public_key(std::vector<std::string> const& key_types, std::string const&, std::string const&) override {
+		for(auto const& t : key_types) { if(t == key->algo_name()) { return std::shared_ptr<Botan::Public_Key>(key->public_key()); } }
+		return nullptr;
+	}
+	std::shared_ptr<Botan::Private_Key> private_key_for(Botan::Public_Key const&, std::string const&, std::string const&) override { return key; }
+	std::shared_ptr<Botan::ECDSA_PrivateKey> key;
+};
+
+struct side : tls::Callbacks {
+	side(std::string n, asio::ip::tcp::socket s) : name(std::move(n)), sock(std::move(s)) {}
+	void tls_emit_data(std::span<const std::uint8_t> d) override { asio::write(sock, asio::buffer(d.data(), d.size())); }
+	void tls_record_received(std::uint64_t, std::span<const std::uint8_t> d) override { received.insert(received.end(), d.begin(), d.end()); }
+	void tls_alert(tls::Alert a) override { std::println("{}: alert {}", name, a.type_string()); }
+	void tls_verify_raw_public_key(Botan::Public_Key const& k, Botan::Usage_Type, std::string_view, tls::Policy const&) override {
+		std::println("{}: peer raw public key {} accepted", name, k.algo_name());
+	}
+	void tls_session_established(tls::Session_Summary const& s) override {
+		std::println("{}: established {} kex={} params={} cipher={}", name, s.version().to_string(), s.kex_algo(), s.kex_parameters().value_or("-"), s.cipher_algo());
+	}
+	void tls_session_activated() override { active = true; }
+	void start_read(tls::Channel& ch) {
+		sock.async_read_some(asio::buffer(buf), [this, &ch](std::error_code ec, std::size_t n) {
+			if(ec) { return; }
+			ch.received_data(std::span(buf.data(), n));
+			start_read(ch);
+		});
+	}
+	std::string name;
+	asio::ip::tcp::socket sock;
+	std::array<std::uint8_t, 16384> buf{};
+	bytes received;
+	bool active{};
+};
+
+int main() {
+	asio::io_context io;
+	asio::ip::tcp::acceptor acc(io, {asio::ip::make_address("127.0.0.1"), 0});
+	asio::ip::tcp::socket csock(io), ssock(io);
+	csock.connect(acc.local_endpoint());
+	acc.accept(ssock);
+
+	auto rng = std::make_shared<Botan::AutoSeeded_RNG>();
+	auto policy = std::make_shared<pq_policy>();
+	auto sessions = std::make_shared<tls::Session_Manager_In_Memory>(rng);
+	auto server_cb = std::make_shared<side>("server", std::move(ssock));
+	auto client_cb = std::make_shared<side>("client", std::move(csock));
+	auto server_creds = std::make_shared<raw_creds>(*rng);
+	auto client_creds = std::make_shared<raw_creds>(*rng);
+
+	tls::Server server(server_cb, sessions, server_creds, policy, rng);
+	tls::Client client(client_cb, sessions, client_creds, policy, rng, tls::Server_Information("localhost", 0));
+	server_cb->start_read(server);
+	client_cb->start_read(client);
+	while(!(server_cb->active && client_cb->active)) { io.run_one(); }
+
+	// RFC 5705 exporter on both ends must agree; it is bound to this hybrid key exchange
+	auto exp_s = server.key_material_export("EXPORTER-securepath-auth", "", 32).bits_of();
+	auto exp_c = client.key_material_export("EXPORTER-securepath-auth", "", 32).bits_of();
+	std::println("exporter equal={} value={}...", exp_s == exp_c, Botan::hex_encode(exp_c).substr(0, 16));
+
+	// PQ authentication: client signs the exporter with its ML-DSA-65 identity key, server verifies
+	Botan::ML_DSA_PrivateKey id_key(*rng, Botan::ML_DSA_Mode(Botan::ML_DSA_Mode::ML_DSA_6x5));
+	Botan::PK_Signer signer(id_key, *rng, "Randomized");
+	auto sig = signer.sign_message(exp_c, *rng);
+	client.send(sig);
+	while(server_cb->received.size() < sig.size()) { io.run_one(); }
+	Botan::PK_Verifier verifier(*id_key.public_key(), "");
+	bool auth = verifier.verify_message(exp_s, server_cb->received);
+	std::println("server verified client ML-DSA-65 channel-binding signature: {} ({} B over TLS)", auth, server_cb->received.size());
+
+	server.send(std::string_view("hello over pq tls"));
+	while(client_cb->received.size() < 17) { io.run_one(); }
+	std::println("client got: {}", std::string(client_cb->received.begin(), client_cb->received.end()));
+	client.close(); 
+	for(int i = 0; i < 20; ++i) { io.poll(); }
+	return (exp_s == exp_c && auth) ? 0 : 1;
+}

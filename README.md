@@ -7,11 +7,20 @@ Base C++ libraries shared by Secure Path projects (rumpu, spsync, ...).
 | `log` | `std::format`-style logging (`{}` placeholders) with pluggable backends | – |
 | `util` | small general-purpose helpers and types | `log` |
 | `serialisation` | ASN.1 DER (de)serialisation framework: free `serialise(Ar&, T&)` functions dispatched via ADL | `util` |
-| `event_system` | event handler / event loop primitives | – |
+| `event_system` | event handler / event loop primitives, broadcast observers (asio) | `util`, asio |
+| `database` | database connection abstraction with an sqlite backend | `util`, sqlite3 |
+| `common` | key/value store on top of `database`, version numbers | `database` |
+| `crypto` | post-quantum crypto on Botan 3: ML-DSA signatures, hybrid X25519/ML-KEM envelopes, AES-256-GCM, own certificate format, key stores — see [doc/crypto.md](doc/crypto.md) | `serialisation`, `database`, Botan ≥ 3.9 |
+| `network` | TLS 1.3 transport (hybrid PQ key exchange) with ML-DSA channel-bound authentication, asio based connection/server classes — see [doc/network.md](doc/network.md) | `crypto`, `common`, asio |
+| `console` | ncurses text UI widgets | `event_system`, ncursesw |
 | `test_frame` | Catch2 v3 support library used by every test suite | Catch2 |
 
+Libraries whose dependencies are missing on a tool chain are skipped with a status
+message at configure time (e.g. the mingw cross-build has no sqlite/Botan yet).
+
 Requirements: CMake >= 3.25, a C++26 compiler (GCC 14 or newer; GCC 16 is
-what the libraries are developed with).
+what the libraries are developed with), asio (system or fetched automatically),
+and for the full set sqlite3, Botan >= 3.9 and ncursesw development packages.
 
 ## Building and testing
 

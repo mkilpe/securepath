@@ -1,0 +1,3 @@
+securepath_add_library(packet_transport_client *.cpp *.hpp)
+target_link_libraries(packet_transport_client PUBLIC packet_transport_protocol network crypto database event_system)
+securepath_add_test_directory(test)

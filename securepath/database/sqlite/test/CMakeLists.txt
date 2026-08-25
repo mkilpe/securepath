@@ -1,0 +1,1 @@
+securepath_add_test(test_database database test_frame)

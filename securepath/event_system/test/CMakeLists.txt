@@ -1,0 +1,1 @@
+securepath_add_test(test_event_system event_system test_frame)

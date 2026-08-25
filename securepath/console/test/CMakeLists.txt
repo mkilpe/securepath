@@ -1,0 +1,1 @@
+securepath_add_test(test_console console test_frame)

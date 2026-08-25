@@ -3,6 +3,7 @@
 #include <catch2/catch_all.hpp>
 #include <securepath/util/timer.hpp>
 #include <chrono>
+#include <cstdint>
 
 namespace securepath {
 
@@ -11,7 +12,7 @@ using namespace std::literals::chrono_literals;
 #define WAIT(expr, time_to_wait) \
 	do { \
 		timer t; \
-		for(; t.elapsed_milliseconds() < std::chrono::duration_cast<std::chrono::milliseconds>(time_to_wait).count() && !(expr);) { \
+		for(; t.elapsed_milliseconds() < static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(time_to_wait).count()) && !(expr);) { \
 			std::this_thread::sleep_for(100ms); \
 		} \
 	} while (0)
@@ -19,7 +20,7 @@ using namespace std::literals::chrono_literals;
 #define WAIT_CHECK(expr, time_to_wait) \
 	do { \
 		timer t; \
-		for(; t.elapsed_milliseconds() < std::chrono::duration_cast<std::chrono::milliseconds>(time_to_wait).count() && !(expr);) { \
+		for(; t.elapsed_milliseconds() < static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(time_to_wait).count()) && !(expr);) { \
 			std::this_thread::sleep_for(100ms); \
 		} \
 		CHECK(expr); \
@@ -28,7 +29,7 @@ using namespace std::literals::chrono_literals;
 #define WAIT_REQUIRE(expr, time_to_wait) \
 	do { \
 		timer t; \
-		for(; t.elapsed_milliseconds() < std::chrono::duration_cast<std::chrono::milliseconds>(time_to_wait).count() && !(expr);) { \
+		for(; t.elapsed_milliseconds() < static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(time_to_wait).count()) && !(expr);) { \
 			std::this_thread::sleep_for(100ms); \
 		} \
 		REQUIRE(expr); \
