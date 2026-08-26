@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <securepath/crypto/certificate_cache.hpp>
 #include <securepath/crypto/certificate_chain.hpp>
 #include <securepath/crypto/private_key.hpp>
 #include <securepath/crypto/suite.hpp>
@@ -31,6 +32,9 @@ struct pki_test_context {
 	crypto::private_key root;
 	crypto::private_key ca_key;
 	crypto::certificate_chain ca_chain;
+	/// empty by default; tests that exercise revocation insert the revoked certificate here
+	/// so chain validation (which consults this store) rejects it
+	crypto::certificate_cache certs;
 
 private:
 	std::optional<public_key> previous_root_;

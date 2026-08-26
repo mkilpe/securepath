@@ -176,17 +176,39 @@ TEST_CASE("certificate revoke", "[certificate][revocation]") {
 	CHECK(restored.verify_me(key1.public_key()));
 }
 
-TEST_CASE("certificate revocation forged by another key is rejected", "[certificate][revocation][security]") {
+TEST_CASE("certificate ignores a forged or mismatched stapled revocation", "[certificate][revocation][security]") {
 	auto key1 = generate_private_key();
 	auto key2 = generate_private_key();
+
+	// (a) a revocation forged by a non-issuer key must be ignored, not treated as revoking
+	// the certificate (otherwise an attacker could invalidate any certificate by stapling a
+	// bogus revocation onto it -- doc/threat_model.md F2)
 	certificate cert;
 	cert.sign_me(key1);
 	certificate_revocation forged(cert.id());
 	forged.sign_me(key2);
 	cert.set_revocation(forged);
-	// the certificate itself is fine but the revocation does not verify under the issuer -> not cryptographically valid
-	CHECK(!cert.verify_me(key1.public_key()));
-	CHECK(!cert.is_authentic(key1.public_key()));
+	CHECK(cert.verify_me(key1.public_key()));     // the certificate's own signature is untouched
+	CHECK(!cert.is_revoked(key1.public_key()));    // the forged revocation does not count
+	CHECK(cert.is_authentic(key1.public_key()));   // so the certificate is still authentic
+
+	// (b) a genuine issuer-signed revocation, but targeting a different certificate id,
+	// transplanted onto this certificate is likewise ignored
+	certificate other;
+	other.sign_me(key1);
+	certificate_revocation mismatched = revoke_certificate(key1, other); // targets other.id()
+	certificate cert2;
+	cert2.sign_me(key1);
+	cert2.set_revocation(mismatched);
+	CHECK(!cert2.is_revoked(key1.public_key()));
+	CHECK(cert2.is_authentic(key1.public_key()));
+
+	// control: the correct matching issuer-signed revocation DOES revoke
+	certificate cert3;
+	cert3.sign_me(key1);
+	cert3.set_revocation(revoke_certificate(key1, cert3));
+	CHECK(cert3.is_revoked(key1.public_key()));
+	CHECK(!cert3.is_authentic(key1.public_key()));
 }
 
 }

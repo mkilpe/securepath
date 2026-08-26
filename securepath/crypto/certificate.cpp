@@ -27,7 +27,7 @@ octet_vector certificate::make_sig_data() const {
 }
 
 bool certificate::is_authentic(public_key const& key) const {
-	return verify_me(key) && !revocation_;
+	return verify_me(key) && !is_revoked(key);
 }
 
 void certificate::sign_me(private_key const& key) {
@@ -35,8 +35,17 @@ void certificate::sign_me(private_key const& key) {
 }
 
 bool certificate::verify_me(public_key const& key) const {
-	return key.verify(sig_, make_sig_data(), certificate_context)
-		&& (!revocation_ || revocation_->verify_me(key));
+	return key.verify(sig_, make_sig_data(), certificate_context);
+}
+
+bool certificate::is_revoked(public_key const& key) const {
+	// A revocation only counts when it targets THIS certificate (matching id) and is
+	// signed by the issuer. A stapled revocation for a different certificate, or a forged
+	// one, is ignored rather than treated as revoking this certificate; otherwise an
+	// attacker could force a valid certificate to read as revoked (doc/threat_model.md F2).
+	return revocation_ && sig_.is_valid()
+		&& revocation_->id() == id()
+		&& revocation_->verify_me(key);
 }
 
 certificate_id certificate::id() const {

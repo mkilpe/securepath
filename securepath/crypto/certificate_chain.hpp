@@ -61,10 +61,10 @@ public:
 	public_key subject() const;
 
 	/// verify if the chain is cryptographically valid
-	bool is_authentic(public_key_access const& keys) const;
+	bool is_authentic(public_key_access const& keys, certificate_access const& certs) const;
 
 	/// verify if the chain is cryptographically valid and if restriction is fulfilled
-	bool is_authentic(public_key_access const& keys, key_cert_restriction const& rest) const;
+	bool is_authentic(public_key_access const& keys, certificate_access const& certs, key_cert_restriction const& rest) const;
 
 	/// gives the ca level for subject this chain has
 	std::uint16_t subject_ca_level() const;

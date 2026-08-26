@@ -108,6 +108,16 @@ pattern):
 
 ### 6.2 Certificate model and chain validation
 
+> **Update 2026-08-25 (post-review):** the two revocation weaknesses found in the internal
+> review are fixed. (1) Chain validation now consults the verifier's own certificate store
+> (`certificate_chain::is_authentic` takes a `certificate_access const&`), so a revoked
+> certificate whose stapled revocation the presenter omitted is still rejected — revocation is
+> no longer presenter-controlled. (2) A stapled revocation counts only when it targets this
+> certificate (matching id) and is signed by the issuer (`certificate::is_revoked`); a
+> transplanted or forged revocation is ignored rather than used to force-revoke a valid
+> certificate. Tests: `certificate ignores a forged or mismatched stapled revocation`, and the
+> `certificate_chain` store-omitted / transplanted-revocation sections (mutation-checked).
+
 Bespoke DER certificate format (2021 design, signature swap to ML-DSA): certificate
 {version, type, data, signature, optional revocation, trailing}; key certificates
 carry {subject key id, ca_level, restrictions (hostname), metadata}. Chains anchor
@@ -154,7 +164,7 @@ which is acceptable since no external party verifies these signatures.
 | 7.5 | cross-protocol signature reuse | signature contexts everywhere (§6.4) |
 | 7.6 | malformed inputs, decompression-bomb-style DER (A3) | strict DER codec with depth limit (64) and size caps; 16 MiB frame cap; handshake timeout; AEAD tag checked in constant time |
 | 7.7 | pre-authentication resource exhaustion (A1) | bounded per-connection buffers, timeout, caps; *rate limiting is the application's job* — accepted residual |
-| 7.8 | tampered public-key/certificate store (A4) | harmless for trust: authenticity always re-derives from the root key via chains; a tamperer can at most delete (DoS) |
+| 7.8 | tampered public-key/certificate store (A4) | harmless for trust: authenticity always re-derives from the root key via chains; a tamperer can at most delete (DoS). Revocation is now read from this store during validation (fixed 2026-08-25), so store integrity also bounds revocation availability |
 | 7.9 | stolen private-data store (A4) | **residual**: `private_data_database` does not itself encrypt at rest; protection is file permissions unless the application wraps values — see §8 |
 | 7.10 | low-entropy shared secret, offline guessing (A1) | **requirement**: ss-handshake secrets must be high-entropy keys, not passwords — an active attacker completing TLS receives an HMAC over a known binding and can grind a weak secret offline; see §8 |
 | 7.11 | identity key compromise | revocation objects exist; **no certificate expiry** — see §8 |
@@ -166,8 +176,10 @@ which is acceptable since no external party verifies these signatures.
 1. **No external review yet** of §6.1 spec and §6.2 validation logic — the two
    bespoke pieces. Small surface; audit recommended before publication/production.
 2. **No certificate validity periods**: the format has no expiry; revocation is the
-   only recall mechanism and revocations must actually reach verifiers (they travel
-   embedded in the certificate object and via stores). Consider adding a validity
+   only recall mechanism. As of 2026-08-25 chain validation consults the verifier's own
+   certificate store for revocations (not only the presenter's stapled copy), so a revoked
+   certificate is rejected as long as the revocation has reached that store — distribution of
+   revocations to stores is now the operational requirement. Consider adding a validity
    window as a versioned extension before wide deployment.
 3. **At-rest encryption** of `private_data_database` is the caller's responsibility
    today (7.9). Consider an encrypted backend (Argon2id-derived key) in the library.

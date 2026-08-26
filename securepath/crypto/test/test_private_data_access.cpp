@@ -134,7 +134,7 @@ TEST_CASE("private_data_database keeps a real certificate chain for every suite"
 		auto restored_chain = store.my_certificate_chain();
 		REQUIRE(restored_chain);
 		public_key_cache keys;
-		CHECK(restored_chain->is_authentic(keys));
+		CHECK(restored_chain->is_authentic(keys, pki.certs));
 		CHECK(restored_chain->subject().id() == my_private_key(store).id());
 	}
 }

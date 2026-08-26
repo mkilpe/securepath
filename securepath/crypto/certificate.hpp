@@ -33,12 +33,19 @@ public:
 	, certificate_data_(std::move(data))
 	{}
 
-	/// checks the cryptographic validity but also returns false if the certificate has been revoked
+	/// true if the certificate is cryptographically valid AND not revoked by a valid,
+	/// matching stapled revocation. This only consults the revocation carried by this
+	/// certificate object; a verifier must also check its own revocation store (the
+	/// certificate_chain overloads taking certificate_access do this). See doc/threat_model.md.
 	bool is_authentic(public_key const&) const;
 
 	void sign_me(private_key const&);
-	/// checks only if the certificate and possible revocation are cryptographically valid (use is_authentic to see if you can trust the certificate)
+	/// checks only the certificate's own issuer signature (ignores any revocation)
 	bool verify_me(public_key const&) const;
+
+	/// true if this certificate carries a revocation that targets it (matching id) and is
+	/// signed by the given issuer key; a mismatched or forged stapled revocation is ignored
+	bool is_revoked(public_key const&) const;
 
 	public_key_id issuer() const { return sig_.issuer(); }
 

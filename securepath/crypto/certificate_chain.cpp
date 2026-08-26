@@ -92,30 +92,50 @@ struct chain_verify {
 	bool check_chain_element(key_cert_pair const& elem) {
 		check_data data{previous_ca_level, previous_restriction};
 		error err = check_link(elem.subject, elem.cert, previous, data);
-		if(!err) {
-			previous = elem.subject;
-			previous_ca_level = data.ca_level;
-			previous_restriction = data.restriction;
-		} else {
+		if(err) {
 			LOG_WARN("check_chain_element failed: {}", err);
+			return false;
 		}
-		return !err;
+		if(is_revoked_in_store(elem.cert)) {
+			return false;
+		}
+		previous = elem.subject;
+		previous_ca_level = data.ca_level;
+		previous_restriction = data.restriction;
+		return true;
+	}
+
+	// Consult the verifier's own certificate store, not only the revocation the peer chose
+	// to present. A revoked certificate whose stapled revocation was omitted is caught here
+	// (doc/threat_model.md F1). 'previous' is the issuer key for elem.cert at this point.
+	bool is_revoked_in_store(certificate const& cert) const {
+		if(!certs) {
+			return false;
+		}
+		auto stored = certs->find(cert.id());
+		if(stored && stored->is_revoked(previous)) {
+			LOG_WARN("certificate revoked per trusted store: {}", cert.id());
+			return true;
+		}
+		return false;
 	}
 
 	public_key previous;
 	int previous_ca_level{std::numeric_limits<int>::max()};
 	key_cert_restriction previous_restriction;
+	certificate_access const* certs{};
 };
 
 }
 
-bool certificate_chain::is_authentic(public_key_access const& keys) const {
+bool certificate_chain::is_authentic(public_key_access const& keys, certificate_access const& certs) const {
 	bool res = is_valid();
 	if(res) {
 		std::optional<public_key> root = keys.find_root_key(root_key_id_);
 		res = root.has_value();
 		if(res) {
 			chain_verify ver{*root};
+			ver.certs = &certs;
 			for(auto it = begin(); res && it != end(); ++it) {
 				res = ver.check_chain_element(*it);
 			}
@@ -128,8 +148,8 @@ bool certificate_chain::is_authentic(public_key_access const& keys) const {
 	return res;
 }
 
-bool certificate_chain::is_authentic(public_key_access const& keys, key_cert_restriction const& rest) const {
-	return is_authentic(keys) && rest.is_subset_of(subject_restrictions());
+bool certificate_chain::is_authentic(public_key_access const& keys, certificate_access const& certs, key_cert_restriction const& rest) const {
+	return is_authentic(keys, certs) && rest.is_subset_of(subject_restrictions());
 }
 
 std::uint16_t certificate_chain::subject_ca_level() const {
@@ -217,7 +237,7 @@ struct chain_builder {
 		LOG_TRACE("found a root key for chain, constructing chain (root={}, {} elements)", cert.issuer(), list.size());
 		std::reverse(list.begin(), list.end());
 		auto cc = certificate_chain{cert.issuer(), std::move(list)};
-		if(cc.is_authentic(keys)) {
+		if(cc.is_authentic(keys, certs)) {
 			chain = cc;
 		}
 	}

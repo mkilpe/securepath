@@ -65,7 +65,9 @@ auth make_auth(context& c, handshake_binding const& binding, bool required) {
 bool verify_credentials(context& c, auth_credentials const& creds, handshake_binding const& binding,
 	crypto::key_cert_restriction const* rest)
 {
-	bool ok = rest ? creds.chain.is_authentic(c.public_keys(), *rest) : creds.chain.is_authentic(c.public_keys());
+	bool ok = rest
+		? creds.chain.is_authentic(c.public_keys(), c.certificates(), *rest)
+		: creds.chain.is_authentic(c.public_keys(), c.certificates());
 	if(!ok) {
 		LOG_WARN("peer certificate chain is not authentic");
 		return false;
