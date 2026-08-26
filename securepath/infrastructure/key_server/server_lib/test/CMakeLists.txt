@@ -1,0 +1,1 @@
+securepath_add_test(test_key_server key_server key_client crypto_test_support test_frame)
