@@ -93,7 +93,9 @@ struct server_ss_handshake final : ss_handshake_base {
 	using ss_handshake_base::ss_handshake_base;
 
 	handshake_result start() override {
-		return handshake_result{handshake_op_state::error, {}};
+		// the shared-secret variant reveals no identity, so the client speaks first: the server
+		// sends no server-first payload and waits for the client's mac
+		return handshake_result{handshake_op_state::in_progress, {}};
 	}
 
 	handshake_result handle_packet(octet_span data) override {

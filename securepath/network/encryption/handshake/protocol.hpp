@@ -38,24 +38,44 @@ struct client_hello {
 	}
 };
 
-/// Server answer selecting the variant (or unknown when it is not offered).
+/// Server answer selecting the variant (or unknown when it is not offered). It also carries the
+/// concrete handshake's server-first authentication payload (server_auth): for the public-key
+/// variant this is the server's own authentication, sent here so the client verifies the server
+/// before it discloses its identity. It is empty when the concrete handshake has the client speak
+/// first (the shared-secret variant, which reveals no identity). See doc/threat_model.md.
 struct server_hello {
 	server_hello() = default;
-	server_hello(crypto::suite s, int resp, octet_vector id)
+	server_hello(crypto::suite s, int resp, octet_vector id, octet_vector auth = {})
 	: suite(s)
 	, handshake_response(resp)
 	, server_id(std::move(id))
+	, server_auth(std::move(auth))
 	{}
 
 	std::uint16_t version{current_version};
 	crypto::suite suite{crypto::suite::pq1};
 	int handshake_response{handshake_tag::unknown};
 	octet_vector server_id;
+	octet_vector server_auth;
 
 	template<typename Ar>
 	void serialise(Ar& ar) {
 		serialisation::sequence<Ar> seq(ar);
-		seq & version & suite & handshake_response & server_id;
+		seq & version & suite & handshake_response & server_id & server_auth;
+	}
+};
+
+/// Sent by the server to the client once the client's authentication has been accepted, so the
+/// client only reports the connection as established after the server has accepted it (the
+/// public-key variant, where the server verifies the client last). The shared-secret variant does
+/// not need it: the server's own mac is the client's confirmation.
+struct handshake_ack {
+	std::uint16_t version{current_version};
+
+	template<typename Ar>
+	void serialise(Ar& ar) {
+		serialisation::sequence<Ar> seq(ar);
+		seq & version;
 	}
 };
 

@@ -3,8 +3,10 @@
 #include "network_test_context.hpp"
 
 #include <securepath/network/encryption/handshake/handshake.hpp>
+#include <securepath/network/encryption/handshake/protocol.hpp>
 #include <securepath/crypto/hash.hpp>
 #include <securepath/crypto/random.hpp>
+#include <securepath/serialisation/util.hpp>
 #include <securepath/test_frame/test_suite.hpp>
 
 #include <string>
@@ -166,6 +168,55 @@ TEST_CASE("ss handshake rejects a wrong secret", "[network][handshake][ss][secur
 
 	auto res = drive(client, server, handshake_data{handshake_tag::shared_secret});
 	CHECK(!res.server_ok);
+}
+
+TEST_CASE("pk handshake: the client discloses its identity only after verifying the server", "[network][handshake][pk][security]") {
+	SECTION("the server authenticates first and the client's auth is its second message") {
+		network_test_context tc;
+		tc.setup_pk_server();
+		auto ci = tc.add_pk_client();
+		handshake client{tc.client_context(ci), fake_exporter(), endpoint_role::client};
+		handshake server{tc.server_context(), fake_exporter(), endpoint_role::server};
+
+		// message 1: the client hello carries no credentials
+		auto c1 = client.start(handshake_data{handshake_tag::public_key, pk_handshake_client_data{false}});
+		REQUIRE(c1.state == handshake_op_state::in_progress);
+
+		// message 2: the server hello already carries the server's authentication
+		auto s1 = server.handle_packet(c1.packet);
+		REQUIRE(!s1.packet.empty());
+		auto shello = serialisation::asn_der_deserialise<handshake_protocol::server_hello>(s1.packet);
+		CHECK(!shello.server_auth.empty());
+
+		// message 3: only now, having verified the server, does the client send its auth
+		auto c2 = client.handle_packet(s1.packet);
+		REQUIRE(c2.state == handshake_op_state::in_progress);
+		REQUIRE(!c2.packet.empty());
+
+		// message 4: the server accepts the client and acknowledges; both sides complete
+		auto s2 = server.handle_packet(c2.packet);
+		REQUIRE(s2.state == handshake_op_state::succeeded);
+		auto c3 = client.handle_packet(s2.packet);
+		CHECK(c3.state == handshake_op_state::succeeded);
+		CHECK(client.remote_key_id());
+		CHECK(server.remote_key_id());
+	}
+	SECTION("an untrusted server is rejected without the client disclosing anything") {
+		network_test_context tc_server;
+		network_test_context tc_client; // a different root: it does not trust the server
+		tc_server.setup_pk_server();
+		auto ci = tc_client.add_pk_client();
+		handshake client{tc_client.client_context(ci), fake_exporter(), endpoint_role::client};
+		handshake server{tc_server.server_context(), fake_exporter(), endpoint_role::server};
+
+		auto c1 = client.start(handshake_data{handshake_tag::public_key, pk_handshake_client_data{false}});
+		auto s1 = server.handle_packet(c1.packet); // server hello + server auth
+		REQUIRE(!s1.packet.empty());
+		auto c2 = client.handle_packet(s1.packet); // the client cannot verify this server
+		CHECK(c2.state == handshake_op_state::error);
+		CHECK(c2.packet.empty()); // so it sends no auth and reveals no identity
+		CHECK(!client.remote_key_id());
+	}
 }
 
 }

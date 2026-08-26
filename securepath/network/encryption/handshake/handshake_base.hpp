@@ -48,7 +48,9 @@ class handshake_base {
 public:
 	virtual ~handshake_base() = default;
 
-	/// client side sends the first packet; the server side returns an error (it never starts)
+	/// Produce this side's first authentication message. The server side is called first (its
+	/// output is carried in the server_hello); a variant that has the client speak first returns
+	/// an empty in-progress result on the server so the client's start() runs instead.
 	virtual handshake_result start() = 0;
 	virtual handshake_result handle_packet(octet_span data) = 0;
 	virtual int type() const = 0;

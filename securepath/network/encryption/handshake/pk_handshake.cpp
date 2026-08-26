@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "pk_handshake.hpp"
+#include "protocol.hpp"
 
 #include <securepath/network/encryption/error.hpp>
 #include <securepath/crypto/certificate_chain.hpp>
@@ -106,44 +107,67 @@ struct client_pk_handshake final : pk_handshake_base {
 	{}
 
 	handshake_result start() override {
-		try {
-			auto msg = make_auth(context_, data_.binding(), false);
-			return handshake_result{handshake_op_state::in_progress, serialisation::asn_der_serialise(msg)};
-		} catch(std::exception const& ex) {
-			LOG_WARN("client pk handshake failed to start: {}", ex.what());
-		}
+		// the server authenticates first (its auth is carried in the server_hello); the client
+		// never sends the first authentication message
 		return handshake_result{handshake_op_state::error, {}};
 	}
 
 	handshake_result handle_packet(octet_span data) override {
 		try {
-			auto msg = serialisation::asn_der_deserialise<auth>(data);
-			if(!msg.creds) {
-				LOG_WARN("server sent no credentials");
+			if(!server_verified_) {
+				return verify_server_and_reply(data);
+			}
+			// second server message: acknowledgement that our auth was accepted
+			auto ack = serialisation::asn_der_deserialise<handshake_protocol::handshake_ack>(data);
+			if(ack.version != handshake_protocol::current_version) {
+				LOG_WARN("handshake ack version {} not supported", ack.version);
 				return handshake_result{handshake_op_state::error, {}};
 			}
-			crypto::key_cert_restriction rest;
-			bool restrict = data_.extract<pk_handshake_client_data>().value_or(pk_handshake_client_data{}).require_host_restriction;
-			if(restrict) {
-				rest.hostname(data_.network_address());
-			}
-			if(verify_credentials(context_, *msg.creds, data_.binding(), restrict ? &rest : nullptr)) {
-				remote_kid_ = msg.creds->key.id();
-				return handshake_result{handshake_op_state::succeeded, {}};
-			}
+			return handshake_result{handshake_op_state::succeeded, {}};
 		} catch(std::exception const& ex) {
 			LOG_WARN("client pk handshake failed: {}", ex.what());
 		}
 		return handshake_result{handshake_op_state::error, {}};
 	}
 
+	handshake_result verify_server_and_reply(octet_span data) {
+		auto msg = serialisation::asn_der_deserialise<auth>(data);
+		if(!msg.creds) {
+			LOG_WARN("server sent no credentials");
+			return handshake_result{handshake_op_state::error, {}};
+		}
+		crypto::key_cert_restriction rest;
+		bool restrict = data_.extract<pk_handshake_client_data>().value_or(pk_handshake_client_data{}).require_host_restriction;
+		if(restrict) {
+			rest.hostname(data_.network_address());
+		}
+		if(!verify_credentials(context_, *msg.creds, data_.binding(), restrict ? &rest : nullptr)) {
+			return handshake_result{handshake_op_state::error, {}};
+		}
+		remote_kid_ = msg.creds->key.id();
+		server_verified_ = true;
+		// the server is authenticated; only now do we disclose our own identity (the client may
+		// be anonymous when the server does not require client authentication). We stay
+		// in-progress until the server acknowledges it accepted us.
+		auto reply = make_auth(context_, data_.binding(), false);
+		return handshake_result{handshake_op_state::in_progress, serialisation::asn_der_serialise(reply)};
+	}
+
 	handshake_data data_;
+	bool server_verified_{};
 };
 
 struct server_pk_handshake final : pk_handshake_base {
 	using pk_handshake_base::pk_handshake_base;
 
 	handshake_result start() override {
+		try {
+			// the server authenticates first; this message is carried in the server_hello
+			auto msg = make_auth(context_, binding_, true);
+			return handshake_result{handshake_op_state::in_progress, serialisation::asn_der_serialise(msg)};
+		} catch(std::exception const& ex) {
+			LOG_WARN("server pk handshake failed to start: {}", ex.what());
+		}
 		return handshake_result{handshake_op_state::error, {}};
 	}
 
@@ -159,8 +183,10 @@ struct server_pk_handshake final : pk_handshake_base {
 				LOG_WARN("client sent no credentials but authentication is required");
 				return handshake_result{handshake_op_state::error, {}};
 			}
-			auto reply = make_auth(context_, binding_, true);
-			return handshake_result{handshake_op_state::succeeded, serialisation::asn_der_serialise(reply)};
+			// the server's own auth was already sent with the server_hello; acknowledge the client
+			// so it reports the connection established only now that we have accepted it
+			handshake_protocol::handshake_ack ack;
+			return handshake_result{handshake_op_state::succeeded, serialisation::asn_der_serialise(ack)};
 		} catch(std::exception const& ex) {
 			LOG_WARN("server pk handshake failed: {}", ex.what());
 		}

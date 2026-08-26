@@ -97,12 +97,17 @@ handshake_result handshake::handle_client_hello(octet_span data) {
 		client_id_ = hello.client_id;
 		server_id_ = crypto::random_octet_vector(handshake_protocol::hello_id_size);
 		requested_ = handshake_data{hello.handshake_request};
-		handshake_protocol::server_hello reply{context_.suite(), hello.handshake_request, server_id_};
-		octet_vector packet = serialisation::asn_der_serialise(reply);
 		if(make_concrete().state == handshake_op_state::error) {
 			return handshake_result{handshake_op_state::error, {}};
 		}
-		return handshake_result{handshake_op_state::in_progress, std::move(packet)};
+		// the server authenticates first: its auth (if any) rides along with the server_hello so
+		// the client can verify the server before it discloses its own identity
+		handshake_result first = handshake_->start();
+		if(first.state == handshake_op_state::error) {
+			return handshake_result{handshake_op_state::error, {}};
+		}
+		handshake_protocol::server_hello reply{context_.suite(), hello.handshake_request, server_id_, std::move(first.packet)};
+		return handshake_result{handshake_op_state::in_progress, serialisation::asn_der_serialise(reply)};
 	} catch(std::exception const& ex) {
 		LOG_WARN("failed to handle client hello: {}", ex.what());
 	}
@@ -125,6 +130,11 @@ handshake_result handshake::handle_server_hello(octet_span data) {
 		if(make_concrete().state == handshake_op_state::error) {
 			return handshake_result{handshake_op_state::error, {}};
 		}
+		if(!hello.server_auth.empty()) {
+			// the server spoke first (public-key variant): verify it, then send our own auth
+			return handshake_->handle_packet(hello.server_auth);
+		}
+		// the client speaks first (shared-secret variant)
 		return handshake_->start();
 	} catch(std::exception const& ex) {
 		LOG_WARN("failed to handle server hello: {}", ex.what());

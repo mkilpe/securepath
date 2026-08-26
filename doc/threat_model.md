@@ -94,6 +94,12 @@ channel's hybrid key exchange). To impersonate B to A it must present a signatur
 B's ML-DSA key over *A's channel's* binding — which B never produces. Breaking the
 ephemeral ECDSA binder gains nothing: the attacker still cannot forge ML-DSA.
 
+*Message ordering* (fixed 2026-08-26): the server authenticates first — its auth rides in the
+server_hello, the client verifies it before disclosing its own key and certificate chain, and the
+server acknowledges before the client reports the connection established. So an unauthenticated
+peer a client is misdirected to never learns the client's identity. The shared-secret variant
+keeps the client speaking first (it discloses no identity).
+
 *Preconditions the implementation enforces* (each closes a historical break of this
 pattern):
 - TLS 1.3 only — renegotiation does not exist (triple-handshake class).
