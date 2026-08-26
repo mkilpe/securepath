@@ -129,6 +129,10 @@ struct chain_verify {
 }
 
 bool certificate_chain::is_authentic(public_key_access const& keys, certificate_access const& certs) const {
+	if(chain_.size() > max_chain_length) {
+		LOG_WARN("certificate chain too long ({} links, max {})", chain_.size(), max_chain_length);
+		return false;
+	}
 	bool res = is_valid();
 	if(res) {
 		std::optional<public_key> root = keys.find_root_key(root_key_id_);

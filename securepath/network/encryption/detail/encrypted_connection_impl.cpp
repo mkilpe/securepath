@@ -130,6 +130,8 @@ void encrypted_connection_impl::on_tls_handshake(std::error_code ec) {
 		return;
 	}
 	reader_ = std::make_unique<frame_reader>(tls_);
+	// keep pre-auth allocations small until the peer is authenticated
+	reader_->set_max_frame_size(max_handshake_frame_size);
 	auto exporter = [this, self = shared_from_this()](std::string_view label, octet_span ctx, std::size_t len) {
 		return this->exporter(label, ctx, len);
 	};
@@ -191,6 +193,8 @@ void encrypted_connection_impl::become_connected() {
 	}
 	state_ = encrypted_connection::connected;
 	is_connected_ = true;
+	// the peer is authenticated now; allow full-size application frames
+	reader_->set_max_frame_size(max_frame_size);
 	notify_connected();
 	receive_data();
 	do_send();

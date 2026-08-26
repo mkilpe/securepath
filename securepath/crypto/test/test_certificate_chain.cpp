@@ -257,4 +257,40 @@ TEST_CASE("certificate_chain hostname restrictions", "[certificate_chain][securi
 	CHECK(!forced.is_authentic(wide.keys, wide.certs));
 }
 
+TEST_CASE("certificate_chain rejects a chain longer than the cap", "[certificate_chain][security]") {
+	// doc/threat_model.md pre-auth resource caps: bound the number of signature verifications
+	// an unauthenticated peer can force. A chain of exactly max_chain_length fully-valid links
+	// authenticates; one link more is rejected on length alone.
+	private_key root = generate_private_key();
+	set_root_public_key(root.public_key());
+	struct root_guard {
+		~root_guard() { clear_root_public_key(); }
+	} guard;
+
+	public_key_cache keys;
+	certificate_cache certs;
+	certificate_chain chain;
+	private_key issuer = root;
+	std::uint16_t const first_level{60000};
+
+	auto extend = [&](std::uint16_t level) {
+		private_key k = generate_private_key();
+		public_key pk = k.public_key();
+		certificate cert = create_key_certificate(issuer, pk, level);
+		pk.add_certificate_id(cert.id());
+		k.set_public_key(pk);
+		keys.insert(k.public_key());
+		chain.add_link(keys, k.public_key(), cert);
+		issuer = k;
+	};
+
+	for(std::size_t i = 0; i < max_chain_length; ++i) {
+		extend(static_cast<std::uint16_t>(first_level - i)); // strictly decreasing ca level
+	}
+	CHECK(chain.is_authentic(keys, certs)); // exactly max_chain_length links
+
+	extend(static_cast<std::uint16_t>(first_level - max_chain_length)); // one link too many
+	CHECK(!chain.is_authentic(keys, certs));
+}
+
 }

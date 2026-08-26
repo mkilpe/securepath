@@ -24,6 +24,11 @@ namespace securepath::crypto {
 class public_key_access;
 class certificate_access;
 
+/// Upper bound on the number of links a chain may have to be considered authentic. Real trust
+/// hierarchies are a few levels deep; the cap bounds the signature-verification work an
+/// unauthenticated peer can force during a handshake (doc/threat_model.md pre-auth resource caps).
+constexpr std::size_t max_chain_length{16};
+
 struct key_cert_pair {
 	public_key subject;
 	certificate cert;

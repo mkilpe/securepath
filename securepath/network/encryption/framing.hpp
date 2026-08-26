@@ -18,6 +18,11 @@ namespace securepath::network {
 /// Record framing on top of tls_stream: u32 big-endian payload length followed by the payload.
 /// Message boundaries are preserved, a frame is at most max_frame_size bytes of payload.
 constexpr std::size_t max_frame_size{16u * 1024 * 1024};
+/// Frame cap used while the sp handshake is still in progress. Handshake messages (hellos and
+/// the auth message with a public key + certificate chain + signature) are far smaller than
+/// this; the low cap bounds how much an unauthenticated peer that completed TLS can make the
+/// receiver allocate before it is authenticated (doc/threat_model.md pre-auth resource caps).
+constexpr std::size_t max_handshake_frame_size{256u * 1024};
 constexpr std::size_t frame_header_size{4};
 
 using frame_send_handler = std::function<void(std::error_code)>;
@@ -43,6 +48,11 @@ public:
 	frame_reader(frame_reader const&) = delete;
 	frame_reader& operator=(frame_reader const&) = delete;
 
+	/// Cap on the payload length this reader will accept; a frame claiming more fails with
+	/// errc::invalid_record. Defaults to max_frame_size; the connection lowers it to
+	/// max_handshake_frame_size during the handshake and raises it once authenticated.
+	void set_max_frame_size(std::size_t max);
+
 	void async_receive_frame(frame_receive_handler handler);
 
 private:
@@ -56,6 +66,7 @@ private:
 	octet_vector buffer_;
 	std::size_t received_{};
 	std::size_t expected_{frame_header_size};
+	std::size_t max_payload_{max_frame_size};
 	bool header_done_{};
 	bool busy_{};
 };

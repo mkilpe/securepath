@@ -41,6 +41,10 @@ frame_reader::frame_reader(std::shared_ptr<tls_stream> stream)
 {
 }
 
+void frame_reader::set_max_frame_size(std::size_t max) {
+	max_payload_ = max;
+}
+
 void frame_reader::async_receive_frame(frame_receive_handler handler) {
 	if(busy_) {
 		asio::post(stream_->strand(), [handler = std::move(handler)] {
@@ -79,7 +83,7 @@ void frame_reader::on_read(std::error_code ec, std::size_t bytes) {
 		return;
 	}
 	std::size_t length = decode_frame_length(std::span<std::uint8_t const, frame_header_size>(buffer_.data(), frame_header_size));
-	if(length > max_frame_size) {
+	if(length > max_payload_) {
 		complete(make_error_code(errc::invalid_record));
 		return;
 	}

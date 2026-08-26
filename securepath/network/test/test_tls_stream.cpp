@@ -153,6 +153,28 @@ TEST_CASE("framing rejects frames above the cap", "[network][tls][framing]") {
 		REQUIRE(frame.size() == 7);
 		CHECK(decode_frame_length(std::span<std::uint8_t const, frame_header_size>(frame.data(), 4)) == 3);
 	}
+	SECTION("lowered handshake cap rejects a header a full-size reader would accept") {
+		frame_reader reader(server);
+		reader.set_max_frame_size(max_handshake_frame_size);
+		std::promise<std::error_code> p;
+		auto f = p.get_future();
+		reader.async_receive_frame([&](std::error_code ec, octet_vector) { p.set_value(ec); });
+		// max_handshake_frame_size + 1 == 0x00040001, far below max_frame_size
+		octet_vector header{0x00, 0x04, 0x00, 0x01};
+		client->async_write(header, [](std::error_code ec, std::size_t) { REQUIRE(!ec); });
+		CHECK(loopback::wait(f) == make_error_code(errc::invalid_record));
+	}
+	SECTION("lowered handshake cap still accepts a frame at the limit") {
+		frame_reader reader(server);
+		reader.set_max_frame_size(max_handshake_frame_size);
+		std::promise<std::error_code> p;
+		auto f = p.get_future();
+		octet_vector got;
+		reader.async_receive_frame([&](std::error_code ec, octet_vector data) { got = std::move(data); p.set_value(ec); });
+		async_send_frame(client, octet_vector(max_handshake_frame_size, 0xab), [](std::error_code ec) { REQUIRE(!ec); });
+		CHECK(!loopback::wait(f));
+		CHECK(got.size() == max_handshake_frame_size);
+	}
 }
 
 TEST_CASE("tls_stream handshake fails cleanly on mismatched groups", "[network][tls][security]") {
