@@ -13,9 +13,12 @@
 #include <securepath/crypto/test/support/pki_test_context.hpp>
 #include <securepath/crypto/test/support/public_key_test_cache.hpp>
 #include <securepath/test_frame/test_suite.hpp>
+#include <securepath/util/resume_on.hpp>
+#include <securepath/util/sync_wait.hpp>
 
 #include <asio/executor_work_guard.hpp>
 #include <asio/io_context.hpp>
+#include <asio/strand.hpp>
 
 #include <thread>
 #include <vector>
@@ -146,7 +149,7 @@ TEST_CASE("key server rejects an invalid or duplicate key registration", "[key_s
 	server.close();
 }
 
-TEST_CASE("async_find_key delivers the result through then()", "[key_server]") {
+TEST_CASE("async_find_key result can be co_awaited", "[key_server]") {
 	fixture f;
 	auto sctx = f.server_context();
 	server_params params;
@@ -163,18 +166,53 @@ TEST_CASE("async_find_key delivers the result through then()", "[key_server]") {
 	auto key = crypto::generate_private_key().public_key();
 	client.register_key(key);
 
-	std::promise<std::optional<crypto::public_key>> got;
-	auto fut = got.get_future();
-	client.async_find_key(key.id()).then([&](std::future<std::optional<crypto::public_key>> r) {
-		try {
-			got.set_value(r.get());
-		} catch(...) {
-			got.set_exception(std::current_exception());
-		}
-	});
-	auto result = fut.get();
+	auto find = [&client](crypto::public_key_id id) -> task<std::optional<crypto::public_key>> {
+		co_return co_await client.async_find_key(id);
+	};
+	auto result = sync_wait(find(key.id()));
 	REQUIRE(result);
 	CHECK(result->id() == key.id());
+
+	client.close();
+	server.close();
+}
+
+static_assert(securepath::executor<asio::io_context::executor_type>);
+static_assert(securepath::executor<asio::strand<asio::io_context::executor_type>>);
+
+TEST_CASE("async result can be resumed on an asio executor", "[key_server]") {
+	fixture f;
+	auto sctx = f.server_context();
+	server_params params;
+	params.endpoint = asio::ip::tcp::endpoint(asio::ip::make_address("127.0.0.1"), 0);
+	server server(sctx, params);
+	REQUIRE(server.run(2, 0) == 0);
+	auto port = server.local_endpoint().port();
+
+	auto cctx = f.client_context();
+	key_client::client client(cctx);
+	client.connect("127.0.0.1", port);
+	REQUIRE_NOTHROW(client.wait_for_connection());
+
+	auto key = crypto::generate_private_key().public_key();
+	client.register_key(key);
+
+	asio::io_context app_io;
+	auto guard = asio::make_work_guard(app_io);
+	std::jthread app_thread{[&] { app_io.run(); }};
+
+	std::thread::id resumed_on{};
+	auto find = [&](crypto::public_key_id id) -> task<std::optional<crypto::public_key>> {
+		auto found = co_await resume_on(app_io.get_executor(), client.async_find_key(id));
+		resumed_on = std::this_thread::get_id();
+		co_return found;
+	};
+	auto result = sync_wait(find(key.id()));
+	guard.reset();
+
+	REQUIRE(result);
+	CHECK(result->id() == key.id());
+	CHECK(resumed_on == app_thread.get_id());
 
 	client.close();
 	server.close();
