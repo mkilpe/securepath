@@ -7,7 +7,7 @@
 namespace securepath {
 
 inline version_number library_version() {
-	return version_number{0, 2, 0, "alpha"};
+	return version_number{1, 0, 0, "alpha"};
 }
 
 }

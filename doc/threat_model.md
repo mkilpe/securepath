@@ -1,7 +1,8 @@
 # Threat model — securepath crypto and network libraries
 
 Status: written 2026-08-25 against the state of this repository (crypto reworked on
-Botan 3.9, network rebuilt on TLS 1.3 with exporter-bound ML-DSA authentication).
+Botan 3.9, network rebuilt on TLS 1.3 with exporter-bound ML-DSA authentication);
+scope note updated 2026-09-01 after the key_server/key_client port.
 Companion documents: [crypto.md](crypto.md) (algorithm and wire contract),
 [network.md](network.md) (transport design). This document is the intended input
 for an external security review; §10 lists what such a review should focus on.
@@ -13,9 +14,11 @@ certificates and chains, key/secret storage) and the `network` library (TLS tran
 sp handshake, connection/server classes), as used by spsync and packet_transport.
 
 Out of scope: application-level logic built on top (spsync replication semantics,
-packet_transport queueing), the deferred key-distribution components (remote_object,
-key_server, key_client_lib), host/OS security, side-channel resistance beyond what
-Botan provides, and traffic analysis (message sizes and timing are visible).
+packet_transport queueing), the key-distribution components — `key_server` and
+`key_client` are now in-tree (see [key_server.md](key_server.md)) but not yet covered
+by this revision, `remote_object` remains deferred — host/OS security, side-channel
+resistance beyond what Botan provides, and traffic analysis (message sizes and
+timing are visible).
 
 ## 2. Assets
 
