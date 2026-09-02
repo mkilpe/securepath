@@ -74,6 +74,7 @@ handshake_binding handshake::derive_binding() const {
 
 handshake_result handshake::make_concrete() {
 	requested_.set_binding(derive_binding());
+	requested_.set_role(role_);
 	handshake_ = context_.construct_handshake(requested_);
 	return handshake_ ? handshake_result{handshake_op_state::in_progress, {}}
 		: handshake_result{handshake_op_state::error, {}};

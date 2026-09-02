@@ -40,6 +40,11 @@ public:
 	handshake_binding const& binding() const { return binding_; }
 	void set_binding(handshake_binding b) { binding_ = std::move(b); }
 
+	/// role of this endpoint, set by the handshake driver before the concrete handshake
+	/// is constructed; lets one registered constructor serve both roles
+	endpoint_role role() const { return role_; }
+	void set_role(endpoint_role r) { role_ = r; }
+
 	template<typename T>
 	std::optional<T> extract() const {
 		std::optional<T> ret;
@@ -53,6 +58,7 @@ private:
 	std::string network_address_;
 	handshake_binding binding_;
 	std::any data_;
+	endpoint_role role_{endpoint_role::client};
 };
 
 /// Interface to construct concrete handshakes (implemented by network::context).

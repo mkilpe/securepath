@@ -224,4 +224,12 @@ void enable_server_pk_handshake(context& c) {
 	});
 }
 
+void enable_pk_handshake(context& c) {
+	c.add_handshake(handshake_tag::public_key, [&c](handshake_data const& info) {
+		return info.role() == endpoint_role::server
+			? construct_server_pk_handshake(c, info)
+			: construct_client_pk_handshake(c, info);
+	});
+}
+
 }
