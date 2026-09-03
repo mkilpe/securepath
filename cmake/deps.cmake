@@ -5,7 +5,9 @@
 include_guard(GLOBAL)
 include(FetchContent)
 
-# asio (standalone, header-only): system copy first, FetchContent otherwise.
+# asio (standalone, header-only): a consumer-provided asio::asio target or a
+# system copy; building standalone falls back to FetchContent, a consuming
+# project instead just gets the asio-dependent components skipped.
 # Target: asio::asio
 function(securepath_find_asio)
     if(TARGET asio::asio)
@@ -13,6 +15,11 @@ function(securepath_find_asio)
         return()
     endif()
     find_path(ASIO_INCLUDE_DIR asio.hpp)
+    if(NOT ASIO_INCLUDE_DIR AND NOT PROJECT_IS_TOP_LEVEL)
+        set(SECUREPATH_HAVE_ASIO OFF PARENT_SCOPE)
+        message(STATUS "asio: not found; asio-dependent components are skipped")
+        return()
+    endif()
     if(NOT ASIO_INCLUDE_DIR)
         FetchContent_Declare(asio
             URL https://github.com/chriskohlhoff/asio/archive/refs/tags/asio-1-30-2.tar.gz
