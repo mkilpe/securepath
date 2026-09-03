@@ -21,7 +21,7 @@ jobs:
       - name: install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y g++-14 libasio-dev libsqlite3-dev libncurses-dev
+          sudo apt-get install -y g++-14 libasio-dev libsqlite3-dev libncurses-dev libasound2-dev
       - name: configure
         run: cmake --preset default
       - name: build
@@ -36,7 +36,7 @@ jobs:
     container: fedora:44
     steps:
       - name: install dependencies
-        run: dnf install -y gcc-c++ cmake make git asio-devel botan3-devel sqlite-devel ncurses-devel
+        run: dnf install -y gcc-c++ cmake make git asio-devel botan3-devel sqlite-devel ncurses-devel alsa-lib-devel
       - uses: actions/checkout@v4
         with:
           submodules: true

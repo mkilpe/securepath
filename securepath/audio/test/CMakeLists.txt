@@ -1,0 +1,1 @@
+securepath_add_test(test_audio audio audio_util test_frame)

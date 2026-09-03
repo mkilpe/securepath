@@ -15,6 +15,7 @@ Base C++ libraries shared by Secure Path projects (rumpu, spsync, ...).
 | `infrastructure/packet_transport` | peer-to-peer packet transport via a relay server: protocol, `packet_server` daemon and database-backed client | `network`, `crypto`, `database` |
 | `infrastructure/key_server`, `infrastructure/key_client` | public-key registration/lookup service (`key_serverd` daemon) and its client with blocking and coroutine APIs — see [doc/key_server.md](doc/key_server.md) | `network`, `crypto` |
 | `console` | ncurses text UI widgets | `event_system`, ncursesw |
+| `audio`, `audio_util` | audio device io with ALSA (linux) / DirectSound (windows) backends, buffers and format handling; WAV file read/write, resampling and playback helpers | `serialisation`, alsa |
 | `test_frame` | Catch2 v3 support library used by every test suite | Catch2 |
 
 Libraries whose dependencies are missing on a tool chain are skipped with a status
@@ -25,7 +26,8 @@ the design documents.
 
 Requirements: CMake >= 3.25, a C++26 compiler (GCC 14 or newer; GCC 16 is
 what the libraries are developed with), asio (system or fetched automatically),
-and for the full set sqlite3, Botan >= 3.9 and ncursesw development packages.
+and for the full set sqlite3, Botan >= 3.9, alsa-lib and ncursesw development
+packages (the audio backend needs alsa on linux; on windows it uses DirectSound).
 
 ## Building and testing
 

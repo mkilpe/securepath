@@ -1,12 +1,13 @@
 include(deps)
 securepath_find_asio()
 securepath_find_sqlite3()
+securepath_find_alsa()
 securepath_find_curses()
 securepath_find_botan()
 
 # Dependency order (each lib links only libs listed before it):
 #   log <- util <- serialisation <- event_system <- database <- common <- crypto
-#   <- network <- console <- infrastructure/*
+#   <- network <- console <- infrastructure/*; audio needs only serialisation/util/log
 # The EXISTS guard lets libraries be ported one directory at a time.
 function(securepath_add_library_directory dir)
     if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${dir}/CMakeLists.txt)
@@ -20,6 +21,7 @@ securepath_add_library_directory(log)
 securepath_add_library_directory(util)
 securepath_add_library_directory(serialisation)
 securepath_add_library_directory(event_system)
+securepath_add_library_directory(audio)
 if(SECUREPATH_HAVE_SQLITE3)
     securepath_add_library_directory(database)
     securepath_add_library_directory(common)

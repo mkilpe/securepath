@@ -47,6 +47,22 @@ function(securepath_find_sqlite3)
     endif()
 endfunction()
 
+# ALSA (linux audio backend). Target: ALSA::ALSA
+function(securepath_find_alsa)
+    if(WIN32)
+        # the audio library uses the DirectSound backend on windows
+        set(SECUREPATH_HAVE_ALSA OFF PARENT_SCOPE)
+        return()
+    endif()
+    find_package(ALSA)
+    set(SECUREPATH_HAVE_ALSA ${ALSA_FOUND} PARENT_SCOPE)
+    if(ALSA_FOUND)
+        message(STATUS "alsa: ${ALSA_VERSION_STRING}")
+    else()
+        message(STATUS "alsa: not found; the audio library has no backend")
+    endif()
+endfunction()
+
 # ncurses (wide-char). Target: Curses::Curses
 function(securepath_find_curses)
     set(CURSES_NEED_WIDE TRUE)

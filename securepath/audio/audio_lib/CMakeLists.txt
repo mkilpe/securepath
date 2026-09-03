@@ -1,0 +1,18 @@
+# core audio library (buffers, formats, device interfaces); one platform
+# backend is compiled in when available, providing create_default_audio_interface()
+securepath_add_library(audio *.cpp *.hpp)
+target_link_libraries(audio PUBLIC serialisation util log)
+
+if(WIN32)
+    message(STATUS "audio backend: DirectSound")
+    file(GLOB BACKEND_SRC CONFIGURE_DEPENDS dsound/*.cpp dsound/*.hpp)
+    target_sources(audio PRIVATE ${BACKEND_SRC})
+    target_link_libraries(audio PUBLIC dsound dxguid)
+elseif(SECUREPATH_HAVE_ALSA)
+    message(STATUS "audio backend: ALSA")
+    file(GLOB BACKEND_SRC CONFIGURE_DEPENDS alsa/*.cpp alsa/*.hpp)
+    target_sources(audio PRIVATE ${BACKEND_SRC})
+    target_link_libraries(audio PUBLIC ALSA::ALSA)
+else()
+    message(STATUS "audio backend: none; create_default_audio_interface() is unavailable")
+endif()
