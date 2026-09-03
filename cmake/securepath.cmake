@@ -35,7 +35,9 @@ set(SECUREPATH_WARNINGS
 
 function(securepath_apply_warnings target)
     target_compile_options(${target} PRIVATE
-        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:${SECUREPATH_WARNINGS}>)
+        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:${SECUREPATH_WARNINGS}>
+        # sources are UTF-8; MSVC assumes the system codepage unless told
+        $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
 endfunction()
 
 # securepath_add_library(<name> <glob>...)
