@@ -61,3 +61,28 @@ jobs:
         run: cmake --preset windows
       - name: build
         run: cmake --build --preset windows -j"$(nproc)"
+
+  # MSVC build of the windows-buildable subset: core libraries, audio
+  # (DirectSound) and database/common (sqlite3 from vcpkg). crypto/network
+  # are skipped for now: vcpkg botan (3.12) is new enough but builds from
+  # source (~15 min/run), so enabling it needs binary caching first.
+  windows-msvc:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: install dependencies
+        run: vcpkg install sqlite3:x64-windows
+      - name: configure
+        shell: pwsh
+        # CMAKE_BUILD_TYPE has no effect on the multi-config build itself, but
+        # the vcpkg toolchain uses it to pick release instead of debug libraries
+        run: >
+          cmake -B build-msvc -S .
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT\scripts\buildsystems\vcpkg.cmake"
+      - name: build
+        run: cmake --build build-msvc --config Release --parallel
+      - name: test
+        run: ctest --test-dir build-msvc -C Release --output-on-failure

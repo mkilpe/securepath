@@ -13,6 +13,10 @@
 #include <thread>
 #include <functional>
 
+// keep windows.h from defining min/max macros that break std::min/std::max
+#ifndef NOMINMAX
+#	define NOMINMAX
+#endif
 #include <windows.h>
 #include <mmsystem.h>
 #include <mmreg.h>

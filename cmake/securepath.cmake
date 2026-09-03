@@ -12,7 +12,10 @@ add_library(securepath_common INTERFACE)
 add_library(securepath::options ALIAS securepath_common)
 target_include_directories(securepath_common INTERFACE
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>)
-target_compile_features(securepath_common INTERFACE cxx_std_26)
+# C++26 where the compiler has a flag for it; MSVC tops out at cxx_std_23,
+# which cmake turns into /std:c++latest
+target_compile_features(securepath_common INTERFACE
+    $<IF:$<CXX_COMPILER_ID:MSVC>,cxx_std_23,cxx_std_26>)
 
 if(SECUREPATH_SANITIZE)
     target_compile_options(securepath_common INTERFACE -fsanitize=address,undefined -fno-omit-frame-pointer)
@@ -32,7 +35,9 @@ set(SECUREPATH_WARNINGS
 
 function(securepath_apply_warnings target)
     target_compile_options(${target} PRIVATE
-        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:${SECUREPATH_WARNINGS}>)
+        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:${SECUREPATH_WARNINGS}>
+        # sources are UTF-8; MSVC assumes the system codepage unless told
+        $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
 endfunction()
 
 # securepath_add_library(<name> <glob>...)
