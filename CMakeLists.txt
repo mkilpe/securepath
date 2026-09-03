@@ -18,7 +18,13 @@ option(SECUREPATH_BUILD_TEST_FRAME "Build the test_frame helper library (needs C
 option(SECUREPATH_SANITIZE "Build with address and undefined-behaviour sanitizers" OFF)
 
 if(PROJECT_IS_TOP_LEVEL)
-    set(CMAKE_CXX_STANDARD 26)
+    # MSVC has no C++26 flag cmake knows; C++23 maps to /std:c++latest there,
+    # which is the most MSVC can do anyway
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        set(CMAKE_CXX_STANDARD 23)
+    else()
+        set(CMAKE_CXX_STANDARD 26)
+    endif()
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
     set(CMAKE_CXX_EXTENSIONS OFF)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
