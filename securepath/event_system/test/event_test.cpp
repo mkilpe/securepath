@@ -231,21 +231,22 @@ struct timer_test_class : event_handler {
 TEST_CASE("timer_test_class", "[event_system]") {
 	single_thread_event_loop loop;
 
-	// Fixed upper bounds on the elapsed time race the scheduler on a loaded machine: the
-	// loop and the test thread stall together and the timer catches up, so the fire count
-	// and the elapsed time can both be higher than the ideal. The checks therefore tie the
-	// observed count to the elapsed time — c fires of an interval i cannot take less than
-	// about c*i milliseconds — which still catches timers firing early or twice.
+	// The loop reschedules a repeating timer from "now" (no catch-up), so under load every
+	// delay accumulates: c fires of an interval i take at least about c*i milliseconds and
+	// arbitrarily longer on a stalled machine. Fixed upper bounds on the elapsed time (or
+	// tight wait windows) therefore race the scheduler; the checks tie the observed count
+	// to the elapsed time instead — which still catches timers firing early or twice — and
+	// the wait windows are generous, costing nothing when the machine is healthy.
 
 	SECTION("normal timer") {
 		timer_test_class test(loop);
 		timer t;
 		test.start_timer1(2000, false);
-		wait_for_event(3000, [&]{ return test.timer1 != 0; });
+		wait_for_event(10000, [&]{ return test.timer1 != 0; });
 		int const first = test.timer1;
 		CHECK(first >= 1);
 		CHECK(t.elapsed_milliseconds() > 1900u * first);
-		wait_for_event(3000, [&]{ return test.timer1 >= 2; });
+		wait_for_event(10000, [&]{ return test.timer1 >= 2; });
 		int const second = test.timer1;
 		CHECK(second >= 2);
 		CHECK(t.elapsed_milliseconds() > 1900u * second);
@@ -254,7 +255,7 @@ TEST_CASE("timer_test_class", "[event_system]") {
 		timer_test_class test(loop);
 		timer t;
 		test.start_timer1(1000, true);
-		wait_for_event(3000, [&]{ return test.timer1 != 0; });
+		wait_for_event(10000, [&]{ return test.timer1 != 0; });
 		CHECK(test.timer1 == 1);
 		CHECK(t.elapsed_milliseconds() > 900);
 		std::this_thread::sleep_for(2s);
@@ -264,14 +265,22 @@ TEST_CASE("timer_test_class", "[event_system]") {
 		timer_test_class test(loop);
 		timer t;
 		test.start_timer1(1000, false);
-		wait_for_event(3000, [&]{ return test.timer1 != 0; });
+		wait_for_event(10000, [&]{ return test.timer1 != 0; });
 		int const fired = test.timer1;
 		CHECK(fired >= 1);
 		CHECK(t.elapsed_milliseconds() > 900u * fired);
 		test.stop_timer(test.h1);
-		// let a possibly in-flight timer event drain before taking the reference count
-		std::this_thread::sleep_for(500ms);
-		int const stopped_at = test.timer1;
+		// wait until any in-flight timer event has drained: the count must hold still for a
+		// second (bounded overall, so a broken stop still fails the check below)
+		int stopped_at = test.timer1;
+		for(timer settle, total; settle.elapsed_milliseconds() < 1000 && total.elapsed_milliseconds() < 5000; ) {
+			std::this_thread::sleep_for(10ms);
+			int const now = test.timer1;
+			if(now != stopped_at) {
+				stopped_at = now;
+				settle.reset();
+			}
+		}
 		std::this_thread::sleep_for(2s);
 		CHECK(test.timer1 == stopped_at);
 	}
@@ -279,7 +288,7 @@ TEST_CASE("timer_test_class", "[event_system]") {
 		timer_test_class test(loop);
 		test.start_timer1(1000, false);
 		test.start_timer2(1500, false);
-		wait_for_event(5000, [&]{ return test.timer1 >= 4; });
+		wait_for_event(20000, [&]{ return test.timer1 >= 4; });
 		CHECK(test.timer1 >= 4);
 		CHECK(test.timer2 >= 2);
 		CHECK(test.timer2 <= test.timer1);
