@@ -7,7 +7,6 @@
 #include <securepath/log/log.hpp>
 
 #include <atomic>
-#include <iostream>
 #include <cstring>
 #include <chrono>
 #include <thread>
@@ -168,7 +167,7 @@ public:
 
 		HRESULT res = device_->CreateSoundBuffer(&desc, buffer_.out(), 0);
 		if( res != DS_OK ) {
-			std::cerr << "Error code: " << std::hex << res << std::endl;
+			LOG_TRACE("failed to create play buffer: {:#x}", static_cast<std::uint32_t>(res));
 			throw std::runtime_error("failed to create play buffer");
 		}
 		buffer_size_in_bytes_ = desc.dwBufferBytes;
@@ -194,7 +193,7 @@ public:
 	void start() {
 		HRESULT h = buffer_->Play(0, 0, DSBPLAY_LOOPING);
 		if( h != DS_OK ) {
-			std::cout << "error: " << std::hex << h << std::endl;
+			LOG_TRACE("buffer play failed: {:#x}", static_cast<std::uint32_t>(h));
 			throw std::runtime_error("buffer play failed");
 		}
 		running_ = true;
@@ -352,7 +351,7 @@ public:
 		}
 		HRESULT device_res = ::DirectSoundCaptureCreate8(guid, device_.out(), 0);
 		if(device_res != DS_OK) {
-			std::cerr << "Error code: " << std::hex << device_res << std::endl;
+			LOG_TRACE("failed to create capture device: {:#x}", static_cast<std::uint32_t>(device_res));
 			throw std::runtime_error("failed to create device");
 		}
 
@@ -375,7 +374,7 @@ public:
 
 		HRESULT res = device_->CreateCaptureBuffer(&desc, buffer_.out(), 0);
 		if(res != DS_OK) {
-			std::cerr << "Error code: " << std::hex << res << std::endl;
+			LOG_TRACE("failed to create capture buffer: {:#x}", static_cast<std::uint32_t>(res));
 			throw std::runtime_error("failed to create capture buffer");
 		}
 

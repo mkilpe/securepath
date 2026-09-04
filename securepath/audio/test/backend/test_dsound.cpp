@@ -46,6 +46,11 @@ TEST_CASE("dsound default play device opens with notification support", "[audio]
 }
 
 TEST_CASE("dsound every enumerated play device opens (including primary)", "[audio][dsound]") {
+	// a driverless environment (CI) still enumerates the primary device but
+	// cannot open anything; require a usable default device first
+	if(!open_play_device(dsound_test_config())) {
+		return;
+	}
 	auto iface = create_default_audio_interface();
 	REQUIRE(iface);
 	auto infos = iface->enumerate_devices(audio_device_t::play);
