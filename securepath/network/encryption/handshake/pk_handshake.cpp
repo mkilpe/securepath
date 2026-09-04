@@ -21,9 +21,11 @@ namespace {
 
 std::string_view const auth_context{"sp-tls-auth"};
 
-// pk protocol inside the TLS channel (after the hello exchange):
-//   client --> auth (credentials: client public key, chain, signature over the client binding)
+// pk protocol inside the TLS channel; the server authenticates first (its auth is carried in
+// the server_hello), so the client discloses its identity only to a verified server:
 //   server --> auth (credentials: server public key, chain, signature over the server binding)
+//   client --> auth (credentials: client public key, chain, signature over the client binding)
+//   server --> handshake_ack
 // The client always authenticates the server. A client without an own key sends empty
 // credentials; the server accepts that only when context.authenticate_remote() is off.
 struct auth_credentials {

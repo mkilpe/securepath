@@ -25,9 +25,11 @@ written as input for external security review, lives in [doc/](doc/) alongside
 the design documents.
 
 Requirements: CMake >= 3.25, a C++26 compiler (GCC 14 or newer; GCC 16 is
-what the libraries are developed with), asio (system or fetched automatically),
-and for the full set sqlite3, Botan >= 3.9, alsa-lib and ncursesw development
-packages (the audio backend needs alsa on linux; on windows it uses DirectSound).
+what the libraries are developed with; MSVC is built by the windows CI job with
+`/std:c++latest`, the most MSVC offers), asio (system copy, or fetched
+automatically when building standalone), and for the full set sqlite3,
+Botan >= 3.9, alsa-lib and ncursesw development packages (the audio backend
+needs alsa on linux; on windows it uses DirectSound).
 
 ## Building and testing
 
@@ -57,7 +59,11 @@ target_link_libraries(my_app PRIVATE securepath::serialisation)
 ```
 
 Every library is exported as `securepath::<name>` (and as plain `<name>`
-for existing consumers). Headers are included as
+for existing consumers). A consuming project that provides no asio (and has
+none installed) gets the asio-dependent components skipped instead of a
+download: event_system builds without its asio observers, and network and
+infrastructure are left out. Provide an `asio::asio` target (or system asio)
+to enable them. Headers are included as
 `#include <securepath/serialisation/serialiser.hpp>`. Tests are off by
 default when consumed; a consumer that already provides a
 `Catch2::Catch2` target has it reused instead of the bundled submodule.
