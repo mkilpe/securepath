@@ -127,7 +127,8 @@ certificate store for revocations in addition to any stapled one.
 
 `root_public_key()` returns the trust anchor set with `set_root_public_key(public_key)`
 (process-wide, thread-safe) and throws `errc::no_such_root_key` when none is set;
-deployments load it from configuration, tests generate their own through
+deployments load it from the DER file `sp_keygen` writes (`set_root_public_key_from_file()`,
+the daemons' `--root` option, see [keygen.md](keygen.md)); tests generate their own through
 `test::pki_test_context`.
 
 ## Storage

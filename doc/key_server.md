@@ -41,7 +41,9 @@ once.
 
 - `server_params : network::encrypted_net_base_params` — `port` (default
   `default_key_server_port`), an optional `endpoint` that overrides the port when set
-  (`create_endpoint()` resolves the two), handshake `timeout` (10 s default).
+  (`create_endpoint()` resolves the two), handshake `timeout` (10 s default); the base params' `root_public_key_file` is the `--root`
+  option of `key_serverd` and the server's own key and chain come from its private data store
+  (both made with `sp_keygen`, see [keygen.md](keygen.md)).
 - `server : network::encrypted_net_base` — constructed from `server_params` alone
   (sqlite-backed crypto stores from the params) or with a caller-supplied
   `network::context`. `run(net_threads, work_threads)` / `run()` /

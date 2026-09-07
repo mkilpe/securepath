@@ -14,6 +14,7 @@ Base C++ libraries shared by Secure Path projects (rumpu, spsync, ...).
 | `network` | TLS 1.3 transport (hybrid PQ key exchange) with ML-DSA channel-bound authentication, asio based connection/server classes — see [doc/network.md](doc/network.md) | `crypto`, `common`, asio |
 | `infrastructure/packet_transport` | peer-to-peer packet transport via a relay server: protocol, `packet_server` daemon and database-backed client | `network`, `crypto`, `database` |
 | `infrastructure/key_server`, `infrastructure/key_client` | public-key registration/lookup service (`key_serverd` daemon) and its client with blocking and coroutine APIs — see [doc/key_server.md](doc/key_server.md) | `network`, `crypto` |
+| `infrastructure/keygen` | key material of a deployment: root + CA pki directory and certified server/client identities (`sp_keygen` tool) — see [doc/keygen.md](doc/keygen.md) | `crypto`, `database` |
 | `console` | ncurses text UI widgets | `event_system`, ncursesw |
 | `audio`, `audio_util` | audio device io with ALSA (linux) / DirectSound (windows) backends, buffers and format handling; WAV file read/write, resampling and playback helpers | `serialisation`, alsa |
 | `test_frame` | Catch2 v3 support library used by every test suite | Catch2 |

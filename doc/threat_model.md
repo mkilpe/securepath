@@ -130,7 +130,8 @@ pattern):
 Bespoke DER certificate format (2021 design, signature swap to ML-DSA): certificate
 {version, type, data, signature, optional revocation, trailing}; key certificates
 carry {subject key id, ca_level, restrictions (hostname), metadata}. Chains anchor
-in the root key (`set_root_public_key()`, provisioned out of band by the deployment).
+in the root key (`set_root_public_key()`, provisioned out of band by the deployment:
+`sp_keygen` creates it and the daemons load it with `--root`, see [keygen.md](keygen.md)).
 
 Validation rules (in `certificate_chain`): each link's certificate is signed by the
 previous link's key (root first), certificate subject == next key's id, each key's
