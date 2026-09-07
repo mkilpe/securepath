@@ -83,6 +83,7 @@ public:
 	handshake_result start(handshake_data data);
 	handshake_result handle_packet(octet_span data);
 	std::optional<crypto::public_key_id> remote_key_id() const;
+	std::optional<crypto::public_key> remote_public_key() const;
 private:
 	handshake_result handle_client_hello(octet_span data);
 	handshake_result handle_server_hello(octet_span data);

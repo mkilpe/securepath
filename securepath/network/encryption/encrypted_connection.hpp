@@ -4,6 +4,7 @@
 
 #include "context.hpp"
 
+#include <securepath/crypto/public_key.hpp>
 #include <securepath/crypto/public_key_id.hpp>
 #include <securepath/util/error.hpp>
 #include <securepath/util/span.hpp>
@@ -55,6 +56,8 @@ public:
 	tcp_endpoint remote_endpoint() const noexcept;
 	asio::ip::tcp::socket& socket() const noexcept;
 	std::optional<crypto::public_key_id> remote_key_id() const;
+	/// the remote side's authenticated public key when it presented credentials (chain verified to the root)
+	std::optional<crypto::public_key> remote_public_key() const;
 	network::context& context() const;
 
 protected:

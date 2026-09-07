@@ -95,11 +95,15 @@ struct pk_handshake_base : handshake_base {
 		return handshake_tag::public_key;
 	}
 	std::optional<crypto::public_key_id> remote_key_id() const override {
-		return remote_kid_;
+		return remote_key_ ? std::optional{remote_key_->id()} : std::nullopt;
+	}
+	std::optional<crypto::public_key> remote_public_key() const override {
+		return remote_key_;
 	}
 
 	context& context_;
-	std::optional<crypto::public_key_id> remote_kid_;
+	/// the authenticated key of the remote side (its id is derived from it)
+	std::optional<crypto::public_key> remote_key_;
 };
 
 struct client_pk_handshake final : pk_handshake_base {
@@ -146,7 +150,7 @@ struct client_pk_handshake final : pk_handshake_base {
 		if(!verify_credentials(context_, *msg.creds, data_.binding(), restrict ? &rest : nullptr)) {
 			return handshake_result{handshake_op_state::error, {}};
 		}
-		remote_kid_ = msg.creds->key.id();
+		remote_key_ = msg.creds->key;
 		server_verified_ = true;
 		// the server is authenticated; only now do we disclose our own identity (the client may
 		// be anonymous when the server does not require client authentication). We stay
@@ -180,7 +184,7 @@ struct server_pk_handshake final : pk_handshake_base {
 				if(!verify_credentials(context_, *msg.creds, binding_, nullptr)) {
 					return handshake_result{handshake_op_state::error, {}};
 				}
-				remote_kid_ = msg.creds->key.id();
+				remote_key_ = msg.creds->key;
 			} else if(context_.authenticate_remote()) {
 				LOG_WARN("client sent no credentials but authentication is required");
 				return handshake_result{handshake_op_state::error, {}};

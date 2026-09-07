@@ -5,6 +5,7 @@
 #include <securepath/crypto/certificate_database.hpp>
 #include <securepath/crypto/private_data_database.hpp>
 #include <securepath/crypto/public_key_database.hpp>
+#include <securepath/crypto/root_public_key.hpp>
 #include <securepath/crypto/shared_secret_database.hpp>
 #include <securepath/database/sqlite/connection.hpp>
 #include <securepath/log/log.hpp>
@@ -31,6 +32,9 @@ encrypted_net_base::encrypted_net_base(network::context& context)
 }
 
 bool encrypted_net_base::init() {
+	if(!params_.root_public_key_file.empty()) {
+		crypto::set_root_public_key_from_file(params_.root_public_key_file);
+	}
 	if(context_) {
 		keys_.add_backend(non_owning(context_->public_keys()));
 		certs_.add_backend(non_owning(context_->certificates()));

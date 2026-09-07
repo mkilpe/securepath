@@ -68,6 +68,10 @@ std::optional<crypto::public_key_id> encrypted_connection::remote_key_id() const
 	return impl_->remote_key_id();
 }
 
+std::optional<crypto::public_key> encrypted_connection::remote_public_key() const {
+	return impl_->remote_public_key();
+}
+
 network::context& encrypted_connection::context() const {
 	return impl_->connection_context();
 }

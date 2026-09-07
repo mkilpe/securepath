@@ -38,7 +38,12 @@ asio::ip::tcp::socket& encrypted_connection_impl::plain_socket() {
 
 std::optional<crypto::public_key_id> encrypted_connection_impl::remote_key_id() const {
 	std::unique_lock l{mutex_};
-	return remote_kid_;
+	return remote_key_ ? std::optional{remote_key_->id()} : std::nullopt;
+}
+
+std::optional<crypto::public_key> encrypted_connection_impl::remote_public_key() const {
+	std::unique_lock l{mutex_};
+	return remote_key_;
 }
 
 tcp_endpoint encrypted_connection_impl::local_endpoint() const {
@@ -189,7 +194,7 @@ void encrypted_connection_impl::become_connected() {
 	timer_.cancel(ec);
 	{
 		std::unique_lock l{mutex_};
-		remote_kid_ = handshake_->remote_key_id();
+		remote_key_ = handshake_->remote_public_key();
 	}
 	state_ = encrypted_connection::connected;
 	is_connected_ = true;

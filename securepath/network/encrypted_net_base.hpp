@@ -20,6 +20,12 @@ struct encrypted_net_base_params {
 	std::string cert_db{"certificates.db"};
 	std::string private_data_db{"private_data.db"};
 	std::string shared_secret_db{"shared_secret.db"};
+	/**
+	 * DER encoded root public key that anchors every certificate chain this process verifies;
+	 * installed as the process-wide root on init() when set. Empty leaves the root as it is
+	 * (tests install their own, a process without any root cannot authenticate peers).
+	 */
+	std::string root_public_key_file{};
 };
 
 enum class net_type_tag {

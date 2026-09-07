@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <securepath/crypto/public_key.hpp>
 #include <securepath/crypto/public_key_id.hpp>
 #include <securepath/util/span.hpp>
 #include <securepath/util/types.hpp>
@@ -54,6 +55,9 @@ public:
 	virtual handshake_result start() = 0;
 	virtual handshake_result handle_packet(octet_span data) = 0;
 	virtual int type() const = 0;
+	/// the authenticated public key of the remote side (its certificate chain verified), if it sent credentials
+	virtual std::optional<crypto::public_key> remote_public_key() const { return std::nullopt; }
+	/// the id of remote_public_key()
 	virtual std::optional<crypto::public_key_id> remote_key_id() const { return std::nullopt; }
 };
 

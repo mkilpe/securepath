@@ -39,6 +39,7 @@ public:
 
 	asio::ip::tcp::socket& plain_socket();
 	std::optional<crypto::public_key_id> remote_key_id() const;
+	std::optional<crypto::public_key> remote_public_key() const;
 
 	encrypted_connection::connection_state state() const { return state_; }
 	tcp_endpoint local_endpoint() const;
@@ -81,7 +82,7 @@ private:
 	endpoint_role role_{endpoint_role::client};
 	encrypted_connection* client_{};
 	handshake_data handshake_data_;
-	std::optional<crypto::public_key_id> remote_kid_;
+	std::optional<crypto::public_key> remote_key_;
 	tcp_endpoint local_endpoint_;
 	tcp_endpoint remote_endpoint_;
 	std::deque<octet_vector> out_queue_;

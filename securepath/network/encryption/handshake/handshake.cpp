@@ -151,4 +151,12 @@ std::optional<crypto::public_key_id> handshake::remote_key_id() const {
 	return ret;
 }
 
+std::optional<crypto::public_key> handshake::remote_public_key() const {
+	std::optional<crypto::public_key> ret;
+	if(handshake_) {
+		ret = handshake_->remote_public_key();
+	}
+	return ret;
+}
+
 }

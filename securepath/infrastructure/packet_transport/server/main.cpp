@@ -11,9 +11,14 @@
 namespace securepath {
 
 struct parameters : command_parser, packet_transport::packet_server_params {
+	bool help{};
 	int timeout_arg{};
 
 	parameters() {
+		add(help, "help", "h", "show help");
+		add(port, "port", "p", "listening port");
+		add(packet_db, "packet_db", "", "sqlite file holding the queued packets");
+		add(root_public_key_file, "root", "", "DER file of the root public key anchoring certificate chains");
 		add(timeout_arg, "timeout", "", "Connecting/Handshake timeout in seconds");
 	}
 
@@ -32,10 +37,13 @@ int main(int argc, char* args[]) {
 		securepath::log::backend::add_backend<securepath::log::backend::file_output>("file", "packet_server.log");
 		securepath::parameters p;
 		p.parse(argc, args);
-		p.handle_inputs();
-
-		securepath::packet_transport::packet_server server(p);
-		ret = server.run_and_wait();
+		if(p.help) {
+			p.print_help(std::cout);
+		} else {
+			p.handle_inputs();
+			securepath::packet_transport::packet_server server(p);
+			ret = server.run_and_wait();
+		}
 
 	} catch(std::exception const& ex) {
 		LOG_WARN("Error: {}", ex.what());
