@@ -3,6 +3,8 @@
 #include "event_loop.hpp"
 #include "event_handler.hpp"
 
+#include <securepath/log/log.hpp>
+
 #include <algorithm>
 #include <cassert>
 
@@ -78,9 +80,9 @@ void basic_event_loop::handle_event(std::unique_lock<std::mutex>& l, receiver ha
 	try {
 		handler->handle_event(std::move(event));
 	} catch(std::exception const& ex) {
-		//LOG_WARN("exception in event handling: %", ex.what());
+		LOG_WARN("exception in event handling: {}", ex.what());
 	} catch(...) {
-		//LOG_WARN("unknown exception in event handling");
+		LOG_WARN("unknown exception in event handling");
 	}
 	l.lock();
 	active_handler_ = nullptr;
