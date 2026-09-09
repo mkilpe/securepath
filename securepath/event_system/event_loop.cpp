@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <thread>
 
 namespace securepath::event_system {
 
@@ -133,6 +134,10 @@ bool basic_event_loop::process_single_event(std::unique_lock<std::mutex>& l) {
 		handle_event(l, h.handler, std::move(h.event));
 	}
 	return ret || !events_.empty();
+}
+
+bool basic_event_loop::in_loop_thread() const {
+	return my_thread_id_ == std::this_thread::get_id();
 }
 
 single_thread_event_loop::single_thread_event_loop()

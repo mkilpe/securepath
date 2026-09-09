@@ -25,6 +25,8 @@ public:
 	virtual void remove_receiver(receiver) = 0;
 	virtual timer_handle start_timer(receiver, duration, bool single_shot) = 0;
 	virtual void stop_timer(timer_handle) = 0;
+	/// true when called on the thread that runs the handlers of this loop
+	virtual bool in_loop_thread() const = 0;
 };
 
 class basic_event_loop : public event_loop {
@@ -37,6 +39,7 @@ public:
 	timer_handle start_timer(receiver, duration, bool single_shot) override;
 	/// Stop timer
 	void stop_timer(timer_handle) override;
+	bool in_loop_thread() const override;
 
 protected:
 	struct event_holder {
