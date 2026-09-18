@@ -72,4 +72,22 @@ TEST_CASE("hash algorithm serialisation", "[hash][serialisation]") {
 	}
 }
 
+
+TEST_CASE("hash_stream matches one-shot hash", "[hash]") {
+	octet_vector data = random_octet_vector(100000);
+	hash_stream s;
+	std::size_t pos = 0;
+	for(std::size_t piece : {1u, 999u, 65536u, 33464u}) {
+		s.update(octet_span{data}.subspan(pos, piece));
+		pos += piece;
+	}
+	REQUIRE(pos == data.size());
+	CHECK(s.final() == hash(data));
+	// reusable after final
+	s.update(data);
+	CHECK(s.final() == hash(data));
+	CHECK(s.digest_size() == hash_digest_size());
+	CHECK(hash_stream{}.final() == hash(octet_vector{}));
+}
+
 }

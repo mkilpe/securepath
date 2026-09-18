@@ -40,6 +40,29 @@ std::size_t hash_digest_size(hash_algorithm id) {
 	return Botan::HashFunction::create_or_throw(detail::botan_hash_name(id))->output_length();
 }
 
+hash_stream::hash_stream(hash_algorithm id)
+: impl_(Botan::HashFunction::create_or_throw(detail::botan_hash_name(id)))
+{
+}
+
+hash_stream::hash_stream(hash_stream&&) noexcept = default;
+hash_stream& hash_stream::operator=(hash_stream&&) noexcept = default;
+hash_stream::~hash_stream() = default;
+
+void hash_stream::update(octet_span data) {
+	impl_->update(data.data(), data.size());
+}
+
+octet_vector hash_stream::final() {
+	octet_vector ret(impl_->output_length());
+	impl_->final(ret.data());
+	return ret;
+}
+
+std::size_t hash_stream::digest_size() const {
+	return impl_->output_length();
+}
+
 octet_vector hash(octet_span data, hash_algorithm id) {
 	auto h = Botan::HashFunction::create_or_throw(detail::botan_hash_name(id));
 	octet_vector ret(h->output_length());
