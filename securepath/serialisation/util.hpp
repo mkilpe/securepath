@@ -156,6 +156,9 @@ private:
 template<typename ChoiceTypeList>
 class packet_deserialiser : public packet_deserialiser_base {
 public:
+	/// default cap, or the biggest packet the protocol allows
+	using packet_deserialiser_base::packet_deserialiser_base;
+
 	template<typename Visitor>
 	void handle(octet_span data, Visitor visitor) {
 		do_check(data, [visitor](auto& deser, octet_span)
