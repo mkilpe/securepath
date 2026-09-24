@@ -12,6 +12,7 @@
 #include <asio/ip/tcp.hpp>
 
 #include <chrono>
+#include <functional>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -61,6 +62,14 @@ public:
 	network::context& context() const;
 
 protected:
+	/**
+	 * Run f on the connection's strand, where the callbacks run and where close() is
+	 * immediate (from any other thread it waits for the strand, which a thread that IS
+	 * the only io thread cannot do). f must not keep this object alive by itself: hold it
+	 * weakly, or by a shared_ptr the derived object is owned through.
+	 */
+	void post_on_strand(std::function<void()> f);
+
 	virtual void on_connected() {}
 	virtual void on_disconnected(securepath::error const& error) {}
 	virtual void on_sent(std::size_t bytes) {}

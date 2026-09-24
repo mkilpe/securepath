@@ -18,6 +18,8 @@
 #include <mutex>
 #include <optional>
 
+#include <functional>
+
 namespace securepath::network::detail {
 
 /**
@@ -36,6 +38,9 @@ public:
 	void close();
 
 	void do_close();
+
+	/// run f on the strand; the impl stays alive for it, whatever owns the client
+	void post(std::function<void()> f);
 
 	asio::ip::tcp::socket& plain_socket();
 	std::optional<crypto::public_key_id> remote_key_id() const;

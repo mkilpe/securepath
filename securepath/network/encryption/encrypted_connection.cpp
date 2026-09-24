@@ -44,6 +44,10 @@ void encrypted_connection::close() {
 	impl_->close();
 }
 
+void encrypted_connection::post_on_strand(std::function<void()> f) {
+	impl_->post(std::move(f));
+}
+
 encrypted_connection::connection_state encrypted_connection::state() const noexcept {
 	return impl_->state();
 }

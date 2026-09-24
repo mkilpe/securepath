@@ -308,6 +308,10 @@ void encrypted_connection_impl::handle_disconnect(std::optional<std::error_code>
 	state_ = encrypted_connection::not_connected;
 }
 
+void encrypted_connection_impl::post(std::function<void()> f) {
+	asio::post(strand_, [self = shared_from_this(), f = std::move(f)] { f(); });
+}
+
 void encrypted_connection_impl::do_close() {
 	if(server_ && client_) {
 		auto server = server_;
