@@ -48,6 +48,10 @@ void encrypted_connection::post_on_strand(std::function<void()> f) {
 	impl_->post(std::move(f));
 }
 
+void encrypted_connection::close_later(securepath::error const& error, std::shared_ptr<void> keep) {
+	impl_->close_later(error, std::move(keep));
+}
+
 encrypted_connection::connection_state encrypted_connection::state() const noexcept {
 	return impl_->state();
 }

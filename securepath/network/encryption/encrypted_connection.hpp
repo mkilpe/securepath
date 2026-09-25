@@ -52,6 +52,17 @@ public:
 	virtual void send(octet_span);
 	virtual void close();
 
+	/**
+	 * Close from anywhere without waiting: the close is queued on the strand behind what
+	 * runs there and this returns at once, so the callbacks may still arrive until it ran.
+	 * Unlike close() it tells the owner: on_disconnected(error) comes on the strand, once,
+	 * as for a transport failure. For a timer handler, another connection's callback or
+	 * the only io thread, where close() would wait for a strand that cannot run. The
+	 * object must live until the queued close ran (the destructor waits like close()):
+	 * keep, e.g. the owner's shared_from_this(), is held until then.
+	 */
+	void close_later(securepath::error const& error, std::shared_ptr<void> keep = {});
+
 	connection_state state() const noexcept;
 	tcp_endpoint local_endpoint() const noexcept;
 	tcp_endpoint remote_endpoint() const noexcept;
@@ -66,7 +77,8 @@ protected:
 	 * Run f on the connection's strand, where the callbacks run and where close() is
 	 * immediate (from any other thread it waits for the strand, which a thread that IS
 	 * the only io thread cannot do). f must not keep this object alive by itself: hold it
-	 * weakly, or by a shared_ptr the derived object is owned through.
+	 * weakly, or by a shared_ptr the derived object is owned through. For a close from
+	 * elsewhere close_later() is the direct way.
 	 */
 	void post_on_strand(std::function<void()> f);
 

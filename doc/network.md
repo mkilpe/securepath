@@ -76,6 +76,11 @@ class net_base; class net_error; enum errc;
 4. `on_connected()`; `send(octet_span)` becomes one framed record, delivered as one
    `on_received(octet_span)` — message boundaries are preserved.
 5. Close: TLS close_notify, then TCP shutdown; `on_disconnected(error)` once.
+   `close()` waits for the strand and tells nobody. `close_later(error, keep)` is for a
+   timer handler, another connection's callback or the only io thread: queued on the
+   strand, it returns at once, callbacks may still arrive until it ran, and then
+   `on_disconnected(error)` comes as for a transport failure; `keep` holds the owner
+   until the close ran (the destructor waits like `close()`).
 
 Sizes: an `auth` message is ~2 KB public key + 3.3 KB signature + chain (per link ~5.6 KB)
 -> 10-15 KB per side; the handshake timeout is 10 s by default.

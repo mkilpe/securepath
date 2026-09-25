@@ -6,6 +6,7 @@
 #include <securepath/crypto/private_data_access.hpp>
 #include <securepath/crypto/random.hpp>
 #include <securepath/test_frame/test_suite.hpp>
+#include <securepath/test_frame/test_utils.hpp>
 
 #include <memory>
 
@@ -214,6 +215,34 @@ TEST_CASE("pk connection reconnects after close", "[network][pk][connection]") {
 		client.close();
 		client.reset_state();
 	}
+	server->close();
+}
+
+TEST_CASE("pk connection close_later tells the owner", "[network][pk][connection]") {
+	network_test_context tc;
+	tc.setup_pk_server();
+	auto ci = tc.add_pk_client();
+	auto server = std::make_shared<echo_server>(tc.server_context(), handshake_tag::public_key);
+	server->start(tcp_endpoint(asio::ip::make_address("127.0.0.1"), 0));
+
+	auto client = std::make_shared<test_client>(tc.client_context(ci), pk_no_restriction());
+	client->connect("127.0.0.1", server->local_endpoint().port());
+	REQUIRE_NOTHROW(client->wait_for_connection());
+
+	// from any thread, without waiting for the strand: on_disconnected comes there, once,
+	// with the given error - and keep holds the object until then
+	std::weak_ptr<test_client> weak = client;
+	client->reset_state();
+	client->close_later(make_error(securepath::errc::timeout, "gave up"), client);
+	REQUIRE_THROWS(client->wait_for_connection());
+	auto const messages = client->disconnect_messages();
+	REQUIRE(messages.size() == 1);
+	CHECK(messages[0].find("gave up") != std::string::npos);
+	// a close after the close: nothing more is told
+	client->close();
+	CHECK(client->disconnect_messages().size() == 1);
+	client.reset();
+	WAIT_CHECK(weak.expired(), 5s);
 	server->close();
 }
 

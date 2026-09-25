@@ -280,6 +280,10 @@ void encrypted_connection_impl::on_timeout(std::error_code ec) {
 }
 
 void encrypted_connection_impl::handle_disconnect(std::optional<std::error_code> const& error) {
+	disconnect_with(securepath::error(error.value_or(securepath::errc::not_an_error)));
+}
+
+void encrypted_connection_impl::disconnect_with(securepath::error const& err) {
 	if(disconnected_) {
 		return;
 	}
@@ -294,7 +298,6 @@ void encrypted_connection_impl::handle_disconnect(std::optional<std::error_code>
 		socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
 		socket_.close(ec);
 	}
-	securepath::error err(error.value_or(securepath::errc::not_an_error));
 	if(client_) {
 		auto handle = client_;
 		client_ = nullptr;
@@ -310,6 +313,15 @@ void encrypted_connection_impl::handle_disconnect(std::optional<std::error_code>
 
 void encrypted_connection_impl::post(std::function<void()> f) {
 	asio::post(strand_, [self = shared_from_this(), f = std::move(f)] { f(); });
+}
+
+void encrypted_connection_impl::close_later(securepath::error const& error, std::shared_ptr<void> keep) {
+	asio::post(strand_, [self = shared_from_this(), error, keep = std::move(keep)] {
+		// closed meanwhile by close() or a transport failure: nothing left to tell
+		if(!self->is_closed_.exchange(true)) {
+			self->disconnect_with(error);
+		}
+	});
 }
 
 void encrypted_connection_impl::do_close() {

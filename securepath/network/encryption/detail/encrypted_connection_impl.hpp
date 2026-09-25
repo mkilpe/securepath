@@ -39,6 +39,10 @@ public:
 
 	void do_close();
 
+	/// close on the strand, telling the client on_disconnected(error) as for a transport
+	/// failure; keep is released there after the close ran
+	void close_later(securepath::error const& error, std::shared_ptr<void> keep);
+
 	/// run f on the strand; the impl stays alive for it, whatever owns the client
 	void post(std::function<void()> f);
 
@@ -69,6 +73,8 @@ private:
 	void start_timeout(std::chrono::seconds timeout);
 	void on_timeout(std::error_code ec);
 	void handle_disconnect(std::optional<std::error_code> const& error);
+	/// what handle_disconnect does, with the error the client hears
+	void disconnect_with(securepath::error const& error);
 	void notify_connected();
 	void notify_sent(std::size_t bytes);
 	void notify_received(octet_span data);

@@ -9,6 +9,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <optional>
+#include <string>
 #include <vector>
 #include <stdexcept>
 
@@ -75,8 +76,15 @@ struct test_client : encrypted_connection {
 		if(!done && err) {
 			failure = err.code();
 		}
+		disconnects.push_back(err.what());
 		done = true;
 		cond.notify_all();
+	}
+
+	/// what every on_disconnected said, in order
+	std::vector<std::string> disconnect_messages() const {
+		std::unique_lock lock{mutex};
+		return disconnects;
 	}
 
 	void on_received(octet_span s) override {
@@ -92,6 +100,7 @@ struct test_client : encrypted_connection {
 	std::optional<std::error_code> failure;
 	octet_vector received;
 	std::vector<std::size_t> sizes;
+	std::vector<std::string> disconnects;
 };
 
 /// Server connection that echoes every received message back.
