@@ -96,6 +96,10 @@ endfunction()
 # Botan 3 (>= 3.9 for ML-KEM/ML-DSA). Target: Botan::Botan
 function(securepath_find_botan)
     find_package(Botan 3.9 CONFIG QUIET)
+    if(Botan_FOUND AND NOT TARGET Botan::Botan AND TARGET botan::botan-static)
+        # a static-only Botan (a cross build for Android, say) has no shared target
+        add_library(Botan::Botan ALIAS botan::botan-static)
+    endif()
     if(NOT Botan_FOUND)
         find_package(PkgConfig QUIET)
         if(PkgConfig_FOUND)

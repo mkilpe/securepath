@@ -34,7 +34,7 @@ public:
 	packet_server(network::context& context, packet_server_params = {});
 	~packet_server();
 
-	void close();
+	void close() override;
 
 	/// run the io threads and start accepting connections
 	int run(int net_threads, int work_threads) override;
